@@ -306,21 +306,46 @@ def transfer_from(args):
     entrymsg = '[?] What method to use?'
     method = dynamic_populated_choices(entrymsg, TransferFrom_Methods)
 
+    # TARGET FILE FULLPATH
+    print('[?] What is the fullpath of the file on target: ', end='')
+    try:
+        file_fullpath = input()
+    except KeyboardInterrupt:
+        sys.exit(0)
+
     # BASE64 METHOD
     if method == 'base64':
-        print('[?] What is the fullpath of the file on target: ', end='')
-        file_fullpath = input()
-        # md5h = hashlib.md5(open(relpath, 'rb').read()).hexdigest()
         # file_fullpath = 'C:\Windows\system32\drivers\etc\hosts'
         if args.os == 'windows':
-            finalcmd = '[Convert]::ToBase64String((Get-Content -path \"' + file_fullpath + '\" -Encoding byte))'
-            finalcmd2 = 'Get-FileHash ' + file_fullpath + ' -Algorithm md5'
-            print('\n[================== RUN ON TARGET ==================]\n')
-            print('# GENERATE BASE64 STRING')
-            print(finalcmd)
-            print('\n# GENERATE MD5 CHECKSUM')
-            print(finalcmd2)
-            print('\n[================ END RUN ON TARGET ================]\n')
+            filename = file_fullpath.split('\\')[-1]
+            while True:
+                finalcmd = '[Convert]::ToBase64String((Get-Content -path \"' + file_fullpath + '\" -Encoding byte))'
+                finalcmd2 = 'Get-FileHash ' + file_fullpath + ' -Algorithm md5'
+                print('\n[================== RUN ON TARGET ==================]\n')
+                print('# GENERATE BASE64 STRING')
+                print(finalcmd)
+                print('\n# GENERATE MD5 CHECKSUM')
+                print(finalcmd2)
+                print('\n[================ END RUN ON TARGET ================]\n')
+                print('[?] Paste generated Base64 string here: ', end='')
+                try:
+                    b64 = input()
+                except KeyboardInterrupt:
+                    sys.exit(0)
+                cmd = 'echo \'' + b64 + '\' | base64 -d > ' + filename
+                create_file = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+                create_file.wait()
+                md5h = hashlib.md5(open(filename, 'rb').read()).hexdigest()
+                if b64 == md5h:
+                    print('[+] File succesfully transferred to current directory')
+                    break
+                else:
+                    cmd = 'rm ' + filename
+                    subprocess.run(cmd, shell=True)
+                    print('[!] MD5 checksum does not match')
+                    input('[*] Press any key to try again ...')
+
+
         # ON LINUX
         elif args.os == 'linux':
             print('[-] Still working on it')
@@ -328,8 +353,6 @@ def transfer_from(args):
             # print('\n[===== START LINUX COMMAND =====]\n')
             # print('echo \'' + b64_file.stdout + '\' | base64 -d > ' + args.filename + ' && md5sum ' + args.filename)
             # print('\n[====== END LINUX COMMAND ======]\n')
-
-
 
 # CRACK PASSWORDS
 def password_crack(args):
