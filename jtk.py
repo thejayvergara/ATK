@@ -11,7 +11,11 @@ import netifaces as ni
 import time
 from getpass import getpass
 
+# TRANSFERTO AVAILABLE METHODS (NEED TO ADD SMB AND FTP)
 TransferTo_Methods = ['HTTP', 'SCP', 'Base64']
+
+# TRANFERFROM AVAILABLE METHODS (NEED TO ADD , 'UploadServer', 'SMB', 'FTP', 'WebDAV')
+TransferFrom_Methods = ['Base64']
 
 # GENERATE CHOICES BASED ON A DYNAMIC LIST
 def dynamic_populated_choices(entrymsg, dynamic_list):
@@ -125,7 +129,6 @@ def create_payload(args):
         print('[!] Not yet implemented')
     elif args.shell == 'web':
         print('[!] Not yet implemented')
-
 
 # TRANSFER FILES TO
 def transfer_to(args):
@@ -292,7 +295,41 @@ def transfer_to(args):
 
 # TRANSFER FILES FROM
 def transfer_from(args):
-    print('[!] Not yet implemented')
+    # SEPARATE RELATIVE PATH TO FILE FROM FILENAME ITSELF
+    relpath = args.filename
+    args.filename = os.path.basename(os.path.normpath(args.filename))
+
+    # GENERATE RANDOM FILENAME FOR EXTREMELY MINIMAL FILE OBFUSCATION
+    rand_filename = ''.join(random.choices(string.ascii_letters, k=8))
+
+    # SELECT METHOD
+    entrymsg = '[?] What method to use?'
+    method = dynamic_populated_choices(entrymsg, TransferFrom_Methods)
+
+    # BASE64 METHOD
+    if method == 'base64':
+        print('[?] What is the fullpath of the file on target: ', end='')
+        file_fullpath = input()
+        # md5h = hashlib.md5(open(relpath, 'rb').read()).hexdigest()
+        # file_fullpath = 'C:\Windows\system32\drivers\etc\hosts'
+        if args.os == 'windows':
+            finalcmd = '[Convert]::ToBase64String((Get-Content -path \"' + file_fullpath + '\" -Encoding byte))'
+            finalcmd2 = 'Get-FileHash ' + file_fullpath + ' -Algorithm md5'
+            print('\n[================== RUN ON TARGET ==================]\n')
+            print('# GENERATE BASE64 STRING')
+            print(finalcmd)
+            print('\n# GENERATE MD5 CHECKSUM')
+            print(finalcmd2)
+            print('\n[================ END RUN ON TARGET ================]\n')
+        # ON LINUX
+        elif args.os == 'linux':
+            print('[-] Still working on it')
+            # b64_file = subprocess.run(['base64', '-w', '0', relpath], capture_output=True, text=True)
+            # print('\n[===== START LINUX COMMAND =====]\n')
+            # print('echo \'' + b64_file.stdout + '\' | base64 -d > ' + args.filename + ' && md5sum ' + args.filename)
+            # print('\n[====== END LINUX COMMAND ======]\n')
+
+
 
 # CRACK PASSWORDS
 def password_crack(args):
@@ -310,6 +347,11 @@ def password_crack(args):
     else:
         print('[*] Not yet implemented')
 
+def smb_connect(args):
+    print('[+] Connecting to ' + args.target_ip + ' ...')
+    smb_connection = subprocess.Popen(['smbclient', '-U', args.username, '\\\\' + args.target_ip + '\\'])
+    print(smb_connection)
+
 def main():
     # ARGUMENT PARSER
     parser = argparse.ArgumentParser(
@@ -326,16 +368,22 @@ def main():
     # crackpass = modules.add_parser('crackpass', help='Crack password hashes')
     # crackpass.add_argument('filename', help='File that contains password hashes to crack')
 
+    ##########################
+    ### SMB CONNECT MODULE ###
+    ##########################
+    # smb = modules.add_parser('smb', help='Connect to SMB server')
+    # smb.add_argument('target_ip', help='SMB server IP address')
+    # smb.add_argument('-u', dest='username', help='SMB username')
+
     #############################
     ### FILE TRANSFER MODULES ###
     #############################
     transferto = modules.add_parser('transferto', help='Semi-automated file transfer to target')
     transferto.add_argument('os', help='Operating system to transfer to', choices=['windows', 'linux'])
     transferto.add_argument('filename', help='File to transfer')
-    # transferfrom = modules.add_parser('transferfrom', help='Pastables to transfer from target')
-    # transferfrom.add_argument('os', help='Operating system to transfer to', choices=['windows', 'linux'])
-    # transferfrom.add_argument('method', help='Method of transferring', choices=['http', 'scp', 'base64'])
-    # transferfrom.add_argument('filename', help='File to transfer')
+    transferfrom = modules.add_parser('transferfrom', help='Pastables to transfer from target')
+    transferfrom.add_argument('os', help='Operating system to transfer to', choices=['windows', 'linux'])
+    transferfrom.add_argument('filename', help='File to transfer')
 
     #############################################
     ### RUN MODULE FOR COMMONLY USED COMMANDS ###
@@ -385,10 +433,12 @@ def main():
         create_payload(args)
     elif args.module == 'transferto':
         transfer_to(args)
-    # elif args.module == 'transferfrom':
-    #     transfer_from(args)
+    elif args.module == 'transferfrom':
+        transfer_from(args)
     # elif args.module == 'crackpass':
     #     password_crack(args)
+    # elif args.module == 'smb':
+    #     smb_connect(args)
     else:
         parser.print_help()
 
