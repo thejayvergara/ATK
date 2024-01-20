@@ -9,6 +9,7 @@ import hashlib
 import string
 import netifaces as ni
 import time
+from getpass import getpass
 
 TransferTo_Methods = ['HTTP', 'SCP', 'Base64']
 
@@ -251,9 +252,18 @@ def transfer_to(args):
 
     # SCP METHOD
     elif method == 'scp':
-        print('[+] Uploading ' + args.filename + ' to ' + args.target_ip + ' ...')
-        scp_connect = args.ssh_user + '@' + args.target_ip + ':/tmp/' + rand_filename
-        res = subprocess.run(['scp', '-P', args.target_port, args.filename, scp_connect], capture_output=True, text=True)
+        print('[?] Target IP: ', end='')
+        target_ip = input()
+        print('[?] Target port [default=22]: ', end='')
+        target_port = input()
+        if target_port == '':
+            target_port = '22'
+        print('[?] SCP Username: ', end='')
+        scp_user = input()
+        scp_password = getpass(prompt='[?] SCP Password: ')
+        print('[+] Uploading ' + args.filename + ' to /tmp on ' + target_ip + ' ...')
+        scp_connect = scp_user + '@' + target_ip + ':/tmp/' + rand_filename
+        res = subprocess.run(['scp', '-P', target_port, args.filename, scp_connect], capture_output=True, text=True)
         if res.returncode == 0:
             print('[+] File uploaded as /tmp/' + rand_filename)
         elif res.returncode == 255:
