@@ -124,6 +124,10 @@ def main():
         dest='module'
     )
 
+    # PASSWORD CRACKING MODULE
+    crackpass = modules.add_parser('crackpass', help='method to crack password hashes')
+    crackpass.add_argument('filename', help='File that contains password hashes to crack')
+
     # FILE TRANSFER MODULE FOR TRANSFERRING METHODS
     filetransfer = modules.add_parser('filetransfer', help='methods to transfer files')
 
