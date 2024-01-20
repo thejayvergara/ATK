@@ -8,7 +8,7 @@ import random
 import hashlib
 import string
 import netifaces as ni
-import time
+from time import sleep
 from getpass import getpass
 
 TransferTo_Methods = ['HTTP', 'SCP', 'Base64']
@@ -270,6 +270,8 @@ def transfer_to(args):
             print('[!] File could not be uploaded. Connection refused.')
 
 # TRANSFER FILES FROM
+def transfer_from(args):
+    print('[!] Not yet implemented')
 
 # CRACK PASSWORDS
 def password_crack(args):
@@ -288,18 +290,18 @@ def password_crack(args):
         print('[*] Not yet implemented')
 
 def main():
+    # ARGUMENT PARSER
     parser = argparse.ArgumentParser(
         description='Jay\'s Toolkit',
         epilog='Use \"jref [module] -h\" for more information about a module.'
     )
 
     # JTK MODULES
-    modules = parser.add_subparsers(
-        title='Available Modules',
-        dest='module'
-    )
+    modules = parser.add_subparsers(title='Available Modules', dest='module')
 
-    # PASSWORD CRACKING MODULE
+    ################################
+    ### PASSWORD CRACKING MODULE ###
+    ################################
     crackpass = modules.add_parser('crackpass', help='Crack password hashes')
     crackpass.add_argument('filename', help='File that contains password hashes to crack')
 
@@ -314,73 +316,37 @@ def main():
     transferfrom.add_argument('method', help='Method of transferring', choices=['http', 'scp', 'base64'])
     transferfrom.add_argument('filename', help='File to transfer')
 
-
-    '''
-    # FILE TRANSFER METHODS
-    ftmethods = transferto.add_subparsers(filename
-        title='Available Methods',
-        dest='method'
-    )
-
-    # PYTHON HTTP SERVER FILE TRANSFER METHOD
-    python_http = ftmethods.add_parser(
-        'python_http',
-        help='$(python -m http.server <listen_port>)'
-    )
-    python_http.add_argument('listen_ip', help='IP to start http server on')
-    python_http.add_argument('filename', help='File to be transferred')
-    python_http.add_argument('os', help='Target operating system', choices=['linux','windows'])
-    python_http.add_argument('--trust', help='Bypass untrusted SSL/TLS certificate error', action='store_true')
-    python_http.add_argument('--firstlaunch', help='Bypass first-launch configuration', action='store_true')
-
-    # BASE64 FILE TRANSFER METHOD
-    b64 = ftmethods.add_parser(
-        'base64',
-        help='$(base64 -w 0 <filename>)'
-    )
-    b64.add_argument('filename', help='File to be transferred')
-    b64.add_argument('os', help='Target operating system', choices=['linux','windows'])
-
-    scp = ftmethods.add_parser(
-        'scp',
-        #help='$(scp ' + args.filename + ' ' + args.sshuser + '@' + args.target_ip + ':/tmp/' + randfilename + ')'
-        help='$(scp <filename> <sshuser>@<target_ip>:/tmp/random.txt -P <target_port>)'
-    )
-    scp.add_argument('filename', help='File to be transferred')
-    scp.add_argument('ssh_user', help='SSH username')
-    scp.add_argument('target_ip', help='Target to transfer file to')
-    scp.add_argument('target_port', help='SSH port on target')
-    '''
-
-    # RUN MODULE FOR COMMONLY USED COMMANDS
-    run_parser = modules.add_parser('run', help='Commonly used commands')
+    #############################################
+    ### RUN MODULE FOR COMMONLY USED COMMANDS ###
+    #############################################
+    # run_parser = modules.add_parser('run', help='Commonly used commands')
     
-    # RUN COMMANDS
-    commands = run_parser.add_subparsers(
-        title='Available Commands',
-        dest='command'
-    )
+    # # RUN COMMANDS
+    # commands = run_parser.add_subparsers(
+    #     title='Available Commands',
+    #     dest='command'
+    # )
 
-    # RUN NMAP
-    run_nmap = commands.add_parser(
-        'nmap',
-        help='$(nmap -sV -Pn -p- -oA <target_ip> --open <target_ip>)'
-    )
-    run_nmap.add_argument('target_ip')
+    # # RUN NMAP
+    # run_nmap = commands.add_parser(
+    #     'nmap',
+    #     help='$(nmap -sV -Pn -p- -oA <target_ip> --open <target_ip>)'
+    # )
+    # run_nmap.add_argument('target_ip')
 
-    # RUN GOBUSTER DIR
-    run_gbdir = commands.add_parser(
-        'gbdir',
-        help='$(gobuster dir -u <target_url> -w /usr/share/wordlists/seclists/Discovery/Web-Content/directory-list-2.3-big.txt > target_url.gbdir)'
-    )
-    run_gbdir.add_argument('target_url')
+    # # RUN GOBUSTER DIR
+    # run_gbdir = commands.add_parser(
+    #     'gbdir',
+    #     help='$(gobuster dir -u <target_url> -w /usr/share/wordlists/seclists/Discovery/Web-Content/directory-list-2.3-big.txt > target_url.gbdir)'
+    # )
+    # run_gbdir.add_argument('target_url')
 
-    # RUN GOBUSTER VHOST
-    run_gbvhost = commands.add_parser(
-        'gbvhost',
-        help='$(gobuster vhost -u <target_url> -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt > target_url.gbvhost)'
-    )
-    run_gbvhost.add_argument('target_url')
+    # # RUN GOBUSTER VHOST
+    # run_gbvhost = commands.add_parser(
+    #     'gbvhost',
+    #     help='$(gobuster vhost -u <target_url> -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt > target_url.gbvhost)'
+    # )
+    # run_gbvhost.add_argument('target_url')
 
     ##########################################
     ### PAYLOADS MODULE TO GENERATE SHELLS ###
@@ -394,9 +360,9 @@ def main():
 
     # PARSE ALL ARGS
     args = parser.parse_args() 
-    if args.module == 'run':
-        run_command(args)
-    elif args.module == 'payloads':
+    # if args.module == 'run':
+    #     run_command(args)
+    if args.module == 'payloads':
         create_payload(args)
     elif args.module == 'transferto':
         transfer_to(args)
