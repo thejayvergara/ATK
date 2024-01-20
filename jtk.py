@@ -10,6 +10,28 @@ import string
 import netifaces as ni
 import time
 
+TransferTo_Methods = ['HTTP', 'SCP', 'Base64']
+
+# GENERATE CHOICES BASED ON A DYNAMIC LIST
+def dynamic_populated_choices(entrymsg, dynamic_list):
+    while True:
+        print(entrymsg)
+        i = 1
+        temp_list = []
+        for item in dynamic_list:
+            print('      ' + str(i) + ') ' + item)
+            i += 1
+        print('[?] CHOICE: ', end='')
+        try:
+            choice = input()
+        except KeyboardInterrupt:
+            sys.exit(0)
+        if int(choice) <= len(dynamic_list):
+            choice = dynamic_list[int(choice)-1].lower()
+            return choice
+        else:
+            print('[!] Invalid choice. Try again.')
+
 # RUN COMMONLY USED COMMANDS
 def run_command(args):
     # RUN NMAP SCAN
@@ -71,9 +93,12 @@ def transfer_to(args):
     # GENERATE RANDOM FILENAME FOR EXTREMELY MINIMAL FILE OBFUSCATION
     rand_filename = ''.join(random.choices(string.ascii_letters, k=8))
 
+    # SELECT METHOD
+    entrymsg = '[?] What method to use?'
+    method = dynamic_populated_choices(entrymsg, TransferTo_Methods)
 
     # PYTHON HTTP SERVER METHOD
-    if args.method == 'http':
+    if method == 'http':
         # SELECT IP ADDRESS TO LISTEN TO
         ip_list = []
         for interface in ni.interfaces():
@@ -98,7 +123,7 @@ def transfer_to(args):
                 print('Invalid choice. Try again.')
 
         # START PYTHON HTTP SERVER
-        print('[+] Starting HTTP server on ' + listen_ip + ' port 443 ...')
+        print('[+] Starting HTTP server on ' + listen_ip + ':443 ...')
         try:
             pyserver = subprocess.Popen(['python', '-m', 'http.server', '-b', listen_ip, '443'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except KeyboardInterrupt:
@@ -107,6 +132,7 @@ def transfer_to(args):
             print('[!] Failed to start HTTP server')
             sys.exit(1)
         
+        # TARGET PASTABLES
         print('[+] Run this command on target')
         if args.os == 'windows':
             print('[+] Select method:')
@@ -119,15 +145,12 @@ def transfer_to(args):
                 choice = input()
             except KeyboardInterrupt:
                 sys.exit(0)
-
             if choice == '':
                 choice = '1'
                 print('[+] DownloadFile method selected')
-
             if choice == '1':
                 print('[+] DownloadFile method selected')
                 print('[?] Sync or Async? ', end='')
-                print('')
                 sync = input().lower()
                 if sync == '':
                     sync = 'sync'
@@ -189,9 +212,9 @@ def transfer_to(args):
                 print('[+] HTTP server succesfully terminated')
             except:
                 print('[!] Could not terminate Python HTTP server')
-
+        
     # BASE64 METHOD
-    elif args.method == 'base64':
+    elif method == 'base64':
         print('[+] Generating Base64 string of file')
         b64_file = subprocess.run(['base64', '-w', '0', relpath], capture_output=True, text=True)
         md5h = hashlib.md5(open(relpath, 'rb').read()).hexdigest()
@@ -227,7 +250,7 @@ def transfer_to(args):
                 sys.exit(0)
 
     # SCP METHOD
-    elif args.method == 'scp':
+    elif method == 'scp':
         print('[+] Uploading ' + args.filename + ' to ' + args.target_ip + ' ...')
         scp_connect = args.ssh_user + '@' + args.target_ip + ':/tmp/' + rand_filename
         res = subprocess.run(['scp', '-P', args.target_port, args.filename, scp_connect], capture_output=True, text=True)
@@ -235,6 +258,8 @@ def transfer_to(args):
             print('[+] File uploaded as /tmp/' + rand_filename)
         elif res.returncode == 255:
             print('[!] File could not be uploaded. Connection refused.')
+
+# TRANSFER FILES FROM
 
 # CRACK PASSWORDS
 def password_crack(args):
@@ -273,9 +298,12 @@ def main():
     #############################
     transferto = modules.add_parser('transferto', help='Semi-automated file transfer to target')
     transferto.add_argument('os', help='Operating system to transfer to', choices=['windows', 'linux'])
-    transferto.add_argument('method', help='Method of transferring', choices=['http', 'scp', 'base64'])
     transferto.add_argument('filename', help='File to transfer')
     transferfrom = modules.add_parser('transferfrom', help='Pastables to transfer from target')
+    transferfrom.add_argument('os', help='Operating system to transfer to', choices=['windows', 'linux'])
+    transferfrom.add_argument('method', help='Method of transferring', choices=['http', 'scp', 'base64'])
+    transferfrom.add_argument('filename', help='File to transfer')
+
 
     '''
     # FILE TRANSFER METHODS
