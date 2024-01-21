@@ -304,6 +304,7 @@ def transfer_to(args):
         elif res.returncode == 255:
             print('[!] File could not be uploaded. Connection refused.')
 
+# GET ABSOLUTE PATH OF FILE ON TARGET
 def get_absolute_path():
     print('[?] What is the absolute path of the file on target: ', end='')
     try:
