@@ -11,15 +11,15 @@ import netifaces as ni
 import time
 from getpass import getpass
 
-# TRANSFERTO AVAILABLE METHODS (NEED TO ADD SMB AND FTP)
-TransferTo_Methods = [
+# UploadTo AVAILABLE METHODS (NEED TO ADD SMB AND FTP)
+UploadTo_Methods = [
     'HTTP',
     'SCP',
     'Base64'
 ]
 
 # TRANFERFROM AVAILABLE WINMETHODS (NEED TO ADD 'SMB', 'FTP', 'WebDAV')
-TransferFrom_WinMethods = [
+UploadFrom_WinMethods = [
     'Base64',
     'UploadServer'
 ]
@@ -39,7 +39,7 @@ PSFrom_Methods = [
 ]
 
 # TRANFERFROM AVAILABLE NIXMETHODS (NEED TO ADD 'SMB', 'FTP', 'WebDAV')
-TransferFrom_NixMethods = [
+UploadFrom_NixMethods = [
     'Base64'
 ]
 
@@ -153,8 +153,8 @@ def create_payload(args):
     elif args.shell == 'web':
         print('[!] Not yet implemented')
 
-# TRANSFER FILES TO
-def transfer_to(args):
+# UPLOAD FILES TO
+def upload_to(args):
     # SEPARATE RELATIVE PATH TO FILE FROM FILENAME ITSELF
     relpath = args.filename
     args.filename = os.path.basename(os.path.normpath(args.filename))
@@ -164,7 +164,7 @@ def transfer_to(args):
 
     # SELECT METHOD
     entrymsg = '[?] What method to use?'
-    method = dynamic_populated_choices(entrymsg, TransferTo_Methods)
+    method = dynamic_populated_choices(entrymsg, UploadTo_Methods)
 
     # PYTHON HTTP SERVER METHOD
     if method == 'HTTP':
@@ -324,8 +324,8 @@ def get_absolute_path():
     except KeyboardInterrupt:
         sys.exit(0)
 
-# TRANSFER FILES FROM
-def transfer_from(args):
+# UPLOAD FILES FROM
+def upload_from(args):
     # SEPARATE RELATIVE PATH TO FILE FROM FILENAME ITSELF
     relpath = args.filename
     args.filename = os.path.basename(os.path.normpath(args.filename))
@@ -340,7 +340,7 @@ def transfer_from(args):
     ###########################
     if args.os == 'windows':
         # METHOD SELECTION
-        method = dynamic_populated_choices(entrymsg, TransferFrom_WinMethods)
+        method = dynamic_populated_choices(entrymsg, UploadFrom_WinMethods)
 
         #############################
         ### WINDOWS BASE64 METHOD ###
@@ -436,7 +436,7 @@ def transfer_from(args):
     ### FROM LINUX TARGET ###
     #########################
     elif args.os == 'linux':
-        method = dynamic_populated_choices(entrymsg, TransferFrom_NixMethods)
+        method = dynamic_populated_choices(entrymsg, UploadFrom_NixMethods)
 
         #     print('[-] Still working on it')
             # b64_file = subprocess.run(['base64', '-w', '0', relpath], capture_output=True, text=True)
@@ -492,12 +492,12 @@ def main():
     #############################
     ### FILE TRANSFER MODULES ###
     #############################
-    transferto = modules.add_parser('transferto', help='Semi-automated file transfer to target')
-    transferto.add_argument('os', help='Operating system to transfer to', choices=['windows', 'linux'])
-    transferto.add_argument('filename', help='File to transfer')
-    transferfrom = modules.add_parser('transferfrom', help='Pastables to transfer from target')
-    transferfrom.add_argument('os', help='Operating system to transfer to', choices=['windows', 'linux'])
-    transferfrom.add_argument('filename', help='File to transfer')
+    uploadto = modules.add_parser('uploadto', help='Semi-automated file transfer to target')
+    uploadto.add_argument('os', help='Operating system to transfer to', choices=['windows', 'linux'])
+    uploadto.add_argument('filename', help='File to transfer')
+    uploadfrom = modules.add_parser('uploadfrom', help='Pastables to transfer from target')
+    uploadfrom.add_argument('os', help='Operating system to transfer to', choices=['windows', 'linux'])
+    uploadfrom.add_argument('filename', help='File to transfer')
 
     #############################################
     ### RUN MODULE FOR COMMONLY USED COMMANDS ###
@@ -545,10 +545,10 @@ def main():
     #     run_command(args)
     if args.module == 'payloads':
         create_payload(args)
-    elif args.module == 'transferto':
-        transfer_to(args)
-    elif args.module == 'transferfrom':
-        transfer_from(args)
+    elif args.module == 'uploadto':
+        upload_to(args)
+    elif args.module == 'uploadfrom':
+        upload_from(args)
     # elif args.module == 'crackpass':
     #     password_crack(args)
     # elif args.module == 'smb':
