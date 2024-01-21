@@ -43,6 +43,12 @@ UploadFrom_NixMethods = [
     'Base64'
 ]
 
+# DOWNLOAD METHODS
+Download_Methods = [
+    'wget',
+    'curl'
+]
+
 # GENERATE CHOICES BASED ON A DYNAMIC LIST
 def dynamic_populated_choices(entrymsg, dynamic_list):
     while True:
@@ -103,6 +109,19 @@ def run_command(args):
     elif args.command == 'gbvhost':
         print('[+] Running gobuster vhost on ' + args.target_url)
         subprocess.run([['gobuster', 'vhost', '-u', args.target_url, '-w', '/usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt', '>', args.target_url+'.gbvhost']])
+
+# DOWNLOAD FILES
+def download_file(args):
+    # SELECT DOWNLOAD METHOD
+    entrymsg = '[?] Which download method to use:'
+    choice = dynamic_populated_choices(entrymsg, Download_Methods)
+    if choice == 'wget':
+        cmd = 'wget ' + args.url
+    elif choice == 'curl':
+        cmd = 'curl ' + args.url + ' -o ' + args.url.split('/')[-1]
+
+    # DOWNLOAD
+    subprocess.run(cmd, shell=True)
 
 # CREATE A PAYLOAD
 def create_payload(args):
@@ -499,6 +518,12 @@ def main():
     uploadfrom.add_argument('os', help='Operating system to transfer to', choices=['windows', 'linux'])
     uploadfrom.add_argument('filename', help='File to transfer')
 
+    #######################
+    ### DOWNLOAD MODULE ###
+    #######################
+    download = modules.add_parser('download', help='Download files')
+    download.add_argument('url', help='URL of file to be downloaded')
+
     #############################################
     ### RUN MODULE FOR COMMONLY USED COMMANDS ###
     #############################################
@@ -549,6 +574,8 @@ def main():
         upload_to(args)
     elif args.module == 'uploadfrom':
         upload_from(args)
+    elif args.module == 'download':
+        download_file(args)
     # elif args.module == 'crackpass':
     #     password_crack(args)
     # elif args.module == 'smb':
