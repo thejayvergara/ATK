@@ -14,8 +14,10 @@ from getpass import getpass
 # TRANSFERTO AVAILABLE METHODS (NEED TO ADD SMB AND FTP)
 TransferTo_Methods = ['HTTP', 'SCP', 'Base64']
 
-# TRANFERFROM AVAILABLE METHODS (NEED TO ADD 'SMB', 'FTP', 'WebDAV')
+# TRANFERFROM AVAILABLE WINMETHODS (NEED TO ADD 'SMB', 'FTP', 'WebDAV')
 TransferFrom_WinMethods = ['Base64', 'UploadServer']
+
+# TRANFERFROM AVAILABLE NIXMETHODS (NEED TO ADD 'SMB', 'FTP', 'WebDAV')
 TransferFrom_NixMethods = ['Base64']
 
 # GENERATE CHOICES BASED ON A DYNAMIC LIST
@@ -151,6 +153,7 @@ def transfer_to(args):
             pyserver = subprocess.Popen(['python', '-m', 'http.server', '-b', listen_ip, '443'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             print('[+] HTTP server succesfully started')
         except KeyboardInterrupt:
+            pyserver.terminate()
             sys.exit(0)
         except:
             print('[!] Failed to start HTTP server')
@@ -167,6 +170,7 @@ def transfer_to(args):
             try:
                 choice = input()
             except KeyboardInterrupt:
+                pyserver.terminate()
                 sys.exit(0)
             if choice == '':
                 choice = '1'
@@ -174,7 +178,11 @@ def transfer_to(args):
             if choice == '1':
                 print('[+] DownloadFile method selected')
                 print('[?] Sync or Async [default=sync]: ', end='')
-                sync = input().lower()
+                try:
+                    sync = input().lower()
+                except KeyboardInterrupt:
+                    pyserver.terminate()
+                    sys.exit(0)
                 if sync == '':
                     sync = 'sync'
                 if sync == 'async':
@@ -225,7 +233,11 @@ def transfer_to(args):
 
         print('[?] Close HTTP server? [Y/n] ', end='')
         time.sleep(1)
-        subterminate = input().lower()
+        try:
+            subterminate = input().lower()
+        except KeyboardInterrupt:
+            pyserver.terminate()
+            sys.exit(0)
         if subterminate == '':
             subterminate = 'y'
         if subterminate == 'n':
@@ -427,6 +439,7 @@ def password_crack(args):
     else:
         print('[*] Not yet implemented')
 
+# CONNECT TO TARGET SMB
 def smb_connect(args):
     print('[+] Connecting to ' + args.target_ip + ' ...')
     smb_connection = subprocess.Popen(['smbclient', '-U', args.username, '\\\\' + args.target_ip + '\\'])
