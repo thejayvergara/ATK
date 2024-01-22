@@ -196,7 +196,7 @@ def download_file(args):
     choice = dynamic_populated_choices(entrymsg, Download_Methods)
     if choice == 'Python 3':
         try:
-            urllib.request.urlretrieve(args.url, args.url.split('/')[-1])'
+            urllib.request.urlretrieve(args.url, args.url.split('/')[-1])
             print('[+] File successfully downloaded')
         except:
             print('[!] File could not be downloaded')
