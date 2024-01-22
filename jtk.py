@@ -61,7 +61,8 @@ Download_Methods = [
     'Python 3',
     'Python 2.7',
     'PHP',
-    'Ruby'
+    'Ruby',
+    'Perl'
 ]
 
 PHP_Download_Methods [
@@ -228,7 +229,8 @@ def download_file(args):
                 cmd += 'fclose(\$flocal); fclose(\$remote);'
         elif choice == 'Ruby':
             cmd = 'ruby -e \'require \"net/http\"; File.write(\"' + args.url.split('/')[-1] + '\", Net::HTTP.get(URI.parse(\"' + args.url + '\")))\''
-            
+        elif choice == 'Perl':
+            cmd = 'perl -e \'use LWP::Simple; getstore(\"' + args.url + '\", \"' + args.url.split('/')[-1] + '\");\''
 
         # DOWNLOAD
         try:
