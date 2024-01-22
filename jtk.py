@@ -57,7 +57,15 @@ UploadFrom_NixMethods = [
 # DOWNLOAD METHODS
 Download_Methods = [
     'wget',
-    'cURL'
+    'cURL'.
+    'Python 3',
+    'Python 2.7',
+    'PHP',
+]
+
+PHP_Download_Methods [
+    'File_Get_Contents()',
+    'Fopen()',
 ]
 
 Fileless_Types = [
@@ -207,6 +215,17 @@ def download_file(args):
             cmd = 'curl ' + args.url + ' -o ' + args.url.split('/')[-1]
         elif choice == 'Python 2.7':
             cmd = 'python2.7 -c \'import urllib;urllib.urlretrieve (' + args.url + ', ' + args.url.split('/')[-1] + ')\''
+        elif choice == 'PHP':
+            choice = dynamic_populated_choices(entrymsg, PHP_Download_Methods)
+            if choice == 'File_Get_Contents()':
+                cmd = 'php -r \'\$file = file_get_contents(\"' + args.url + '\"); file_put_contents(\"' + args.url.split('/')[-1] + '\",\$file);\''
+            elif choice == 'Fopen()':
+                cmd = 'php -r \'const BUFFER = 1024;'
+                cmd += '\$fremote = fopen (\"' + args.url + '\", \"rb\");'
+                cmd += '\$flocal = fopen(\"' + args.url.split('/')[-1] + ', \"wb\");'
+                cmd += 'while (\$buffer = fread(\$fremote, BUFFER)) \{ fwrite(\$flocal, \$buffer); \} '
+                cmd += 'fclose(\$flocal); fclose(\$remote);'
+            
 
         # DOWNLOAD
         try:
