@@ -57,15 +57,16 @@ UploadFrom_NixMethods = [
 # DOWNLOAD METHODS
 Download_Methods = [
     'wget',
-    'cURL'.
+    'cURL',
     'Python 3',
     'Python 2.7',
     'PHP',
     'Ruby',
-    'Perl'
+    'Perl',
+    'JavaScript'
 ]
 
-PHP_Download_Methods [
+PHP_Download_Methods = [
     'File_Get_Contents()',
     'Fopen()',
 ]
@@ -231,6 +232,16 @@ def download_file(args):
             cmd = 'ruby -e \'require \"net/http\"; File.write(\"' + args.url.split('/')[-1] + '\", Net::HTTP.get(URI.parse(\"' + args.url + '\")))\''
         elif choice == 'Perl':
             cmd = 'perl -e \'use LWP::Simple; getstore(\"' + args.url + '\", \"' + args.url.split('/')[-1] + '\");\''
+        elif choice == 'JavaScript':
+            cmd = 'echo \'var WinHttpReq = new ActiveXObject("WinHttp.WinHttpRequest.5.1");\' > get.js &&'
+            cmd += 'echo \'WinHttpReq.Open("GET", WScript.Arguments(0), /*async=*/false);\' >> get.js &&'
+            cmd += 'echo \'WinHttpReq.Send();\' >> get.js &&'
+            cmd += 'echo \'BinStream = new ActiveXObject("ADODB.Stream");\' >> get.js &&'
+            cmd += 'echo \'BinStream.Type = 1;\' >> get.js &&'
+            cmd += 'echo \'BinStream.Open();\' >> get.js &&'
+            cmd += 'echo \'BinStream.Write(WinHttpReq.ResponseBody);\' >> get.js &&'
+            cmd += 'echo \'BinStream.SaveToFile(WScript.Arguments(1));\' >> get.js'
+            cmd += 'node get.js ' + args.url + ' ' + args.url.split('/')[-1]
 
         # DOWNLOAD
         try:
