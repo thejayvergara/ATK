@@ -12,11 +12,12 @@ import time
 import urllib.request
 from getpass import getpass
 
-# UPLOAD TO WINDOW TARGET METHODS (NEED TO ADD SMB AND FTP)
+# UPLOAD TO WINDOW TARGET METHODS
 UploadTo_WinMethods = [
     'HTTP',
     'SCP',
     'Base64',
+    'Netcat',
     # 'SMB',
     # 'FTP',
 ]
@@ -463,6 +464,23 @@ def upload_to(args):
             if res.returncode == 0:
                 print('[+] File uploaded as /tmp/' + rand_filename)
             elif res.returncode == 255:
+                print('[!] File could not be uploaded. Connection refused.')
+
+        #############################
+        ### WINDOWS NETCAT METHOD ###
+        #############################
+        elif method == 'Netcat':
+            print('[?] What is the target IP: ', end='')
+            target_ip = input()
+            rand_port = str(random.randint(49152, 65535))
+            cmd = 'nc.exe -l -p ' + rand_port + ' > ' + args.filename
+            pastables(cmd)
+            input('[?] Press any key once command is ran on target ...')
+            cmd = 'nc ' + target_ip + ' ' + rand_port + ' < ' + relpath
+            proc = subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if proc.returncode == 0:
+                print('[+] File successfully uploaded.')
+            else:
                 print('[!] File could not be uploaded. Connection refused.')
 
     #######################
