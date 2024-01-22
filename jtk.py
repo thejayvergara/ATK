@@ -61,6 +61,7 @@ Download_Methods = [
     'Python 3',
     'Python 2.7',
     'PHP',
+    'Ruby'
 ]
 
 PHP_Download_Methods [
@@ -225,6 +226,8 @@ def download_file(args):
                 cmd += '\$flocal = fopen(\"' + args.url.split('/')[-1] + ', \"wb\");'
                 cmd += 'while (\$buffer = fread(\$fremote, BUFFER)) \{ fwrite(\$flocal, \$buffer); \} '
                 cmd += 'fclose(\$flocal); fclose(\$remote);'
+        elif choice == 'Ruby':
+            cmd = 'ruby -e \'require \"net/http\"; File.write(\"' + args.url.split('/')[-1] + '\", Net::HTTP.get(URI.parse(\"' + args.url + '\")))\''
             
 
         # DOWNLOAD
