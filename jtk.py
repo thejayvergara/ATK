@@ -199,7 +199,12 @@ def download_file(args):
         cmd = 'curl ' + args.url + ' -o ' + args.url.split('/')[-1]
 
     # DOWNLOAD
-    subprocess.run(cmd, shell=True)
+    try:
+        proc = subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        proc.wait()
+        print('[+] File successfully downloaded')
+    except:
+        print('[!] File could not be downloaded')
 
 # GENERATE AND VERIFY HASH
 def verify_hash(relpath):
@@ -467,8 +472,6 @@ def upload_to(args):
                 print('[+] File uploaded as /tmp/' + rand_filename)
             elif proc.returncode == 255:
                 print('[!] File could not be uploaded. Connection refused.')
-
-            
 
 # UPLOAD FILES FROM
 def upload_from(args):
