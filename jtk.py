@@ -9,6 +9,7 @@ import hashlib
 import string
 import netifaces as ni
 import time
+import urllib.request
 from getpass import getpass
 
 # UPLOAD TO WINDOW TARGET METHODS (NEED TO ADD SMB AND FTP)
@@ -193,18 +194,27 @@ def download_file(args):
     # SELECT DOWNLOAD METHOD
     entrymsg = '[?] Which download method to use:'
     choice = dynamic_populated_choices(entrymsg, Download_Methods)
-    if choice == 'wget':
-        cmd = 'wget ' + args.url
-    elif choice == 'cURL':
-        cmd = 'curl ' + args.url + ' -o ' + args.url.split('/')[-1]
+    if choice == 'Python 3':
+        try:
+            urllib.request.urlretrieve(args.url, args.url.split('/')[-1])'
+            print('[+] File successfully downloaded')
+        except:
+            print('[!] File could not be downloaded')
+    else:
+        if choice == 'wget':
+            cmd = 'wget ' + args.url
+        elif choice == 'cURL':
+            cmd = 'curl ' + args.url + ' -o ' + args.url.split('/')[-1]
+        elif choice == 'Python 2.7':
+            cmd = 'python2.7 -c \'import urllib;urllib.urlretrieve (' + args.url + ', ' + args.url.split('/')[-1] + ')\''
 
-    # DOWNLOAD
-    try:
-        proc = subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        proc.wait()
-        print('[+] File successfully downloaded')
-    except:
-        print('[!] File could not be downloaded')
+        # DOWNLOAD
+        try:
+            proc = subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            proc.wait()
+            print('[+] File successfully downloaded')
+        except:
+            print('[!] File could not be downloaded')
 
 # GENERATE AND VERIFY HASH
 def verify_hash(relpath):
