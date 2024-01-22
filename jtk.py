@@ -407,7 +407,9 @@ def upload_to(args):
             # PASTABLES
             if method == 'Base64':
                 cmd = '# CREATE ' + args.filename.upper() + ' ON TARGET\n'
-                cmd += 'echo -n \'' + b64 + ' | base64 -d > ' + args.filename
+                cmd += 'echo -n \'' + b64 + '\' | base64 -d > ' + args.filename + '\n'
+                cmd += '\n# GENERATE MD5 CHECKSUM FOR TRANSFERRED FILE\n'
+                cmd += 'md5sum ' + args.filename
             elif method == 'Base64 - Fileless':
                 cmd = '# EXECUTE ' + args.filename.upper() + ' ON TARGET\n'
                 cmd += 'echo -n \'' + b64 + ' | base64 -d | bash'
