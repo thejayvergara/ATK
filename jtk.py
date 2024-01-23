@@ -720,6 +720,18 @@ def upload_from(args):
             # print('echo \'' + b64_file.stdout + '\' | base64 -d > ' + args.filename + ' && md5sum ' + args.filename)
             # print('\n[====== END LINUX COMMAND ======]\n')
 
+def encrypt_file(args):
+    # SEPARATE RELATIVE PATH TO FILE FROM FILENAME ITSELF
+    relpath = args.filename
+    args.filename = os.path.basename(os.path.normpath(args.filename))
+
+    cmd = 'openssl enc -aes256 -iter 100000 -pbkdf2 -in ' + relpath + ' -out ' + args.filename + '.enc'
+    try:
+        proc = subprocess.run(cmd.split())
+
+    except KeyboardInterrupt:
+        sys.exit(0)
+
 # CRACK PASSWORDS
 def password_crack(args):
     print('[?] Which cracker would you like to use?')
@@ -751,6 +763,12 @@ def main():
 
     # JTK MODULES
     modules = parser.add_subparsers(title='Available Modules', dest='module')
+
+    ##############################
+    ### FILE ENCRYPTION MODULE ###
+    ##############################
+    encryptFile = modules.add_parser('encrypt_file', help='Encrypt a file')
+    encryptFile.add_argument('filename', help='File to encrypt')
 
     ################################
     ### PASSWORD CRACKING MODULE ###
@@ -833,6 +851,8 @@ def main():
         upload_from(args)
     elif args.module == 'download':
         download_file(args)
+    elif args.module == 'encrypt_file':
+        encrypt_file(args)
     # elif args.module == 'crackpass':
     #     password_crack(args)
     # elif args.module == 'smb':
