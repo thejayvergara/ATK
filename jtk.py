@@ -11,10 +11,11 @@ import time
 import urllib.request
 from getpass import getpass
 
-import modules.uploadfrom
-import modules.uploadto
-import modules.helpers
-import modules.services
+sys.path.append('modules')
+import uploadfrom
+import uploadto
+import helpers
+import services
 
 # UPLOAD TO WINDOW TARGET METHODS
 UploadTo_WinMethods = [
