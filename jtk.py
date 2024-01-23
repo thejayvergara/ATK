@@ -16,6 +16,7 @@ import uploadfrom
 import uploadto
 import helpers
 import services
+import dl
 
 # UPLOAD TO WINDOW TARGET METHODS
 UploadTo_WinMethods = [
@@ -70,18 +71,6 @@ UploadFrom_NixMethods = [
     # 'WebDAV',
 ]
 
-# DOWNLOAD METHODS
-Download_Methods = [
-    'wget',
-    'cURL',
-    'Python 3',
-    'Python 2.7',
-    'PHP',
-    'Ruby',
-    'Perl',
-    'JavaScript'
-]
-
 PHP_Download_Methods = [
     'File_Get_Contents()',
     'Fopen()',
@@ -101,34 +90,6 @@ def get_absolute_path():
     except KeyboardInterrupt:
         exit(0)
 
-# STOP HTTP SERVER AND DELETE COPY OF FILE TO BE TRANSFERRED
-def stopHTTP():
-    # TERMINATE HTTP SERVER
-    print('[?] Close HTTP server? [Y/n] ', end='')
-    sleep(1)
-    try:
-        subterminate = input().lower()
-    except KeyboardInterrupt:
-        pyserver.terminate()
-        exit(0)
-    if subterminate == '':
-        subterminate = 'y'
-    if subterminate == 'n':
-        print('[!] HTTP server was left open')
-    else:
-        try:
-            pyserver.terminate()
-            print('[+] HTTP server succesfully terminated')
-        except:
-            print('[!] Could not terminate Python HTTP server')
-
-    # REMOVE TEMPORARY FILE
-    cmd = 'rm tmp'
-    try:
-        subprocess.run(cmd, shell=True)
-    except:
-        print('[!] Temporary file to be transferred could not be deleted')
-
 # RUN COMMONLY USED COMMANDS
 def run_command(args):
     # RUN NMAP SCAN
@@ -143,57 +104,6 @@ def run_command(args):
     elif args.command == 'gbvhost':
         print('[+] Running gobuster vhost on ' + args.target_url)
         subprocess.run([['gobuster', 'vhost', '-u', args.target_url, '-w', '/usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt', '>', args.target_url+'.gbvhost']])
-
-# DOWNLOAD FILES
-def download_file(args):
-    # SELECT DOWNLOAD METHOD
-    entrymsg = '[?] Which download method to use:'
-    choice = helpers.populateChoices(entrymsg, Download_Methods)
-    if choice == 'Python 3':
-        try:
-            urllib.request.urlretrieve(args.url, args.url.split('/')[-1])
-            print('[+] File successfully downloaded')
-        except:
-            print('[!] File could not be downloaded')
-    else:
-        if choice == 'wget':
-            cmd = 'wget ' + args.url
-        elif choice == 'cURL':
-            cmd = 'curl ' + args.url + ' -o ' + args.url.split('/')[-1]
-        elif choice == 'Python 2.7':
-            cmd = 'python2.7 -c \'import urllib;urllib.urlretrieve (' + args.url + ', ' + args.url.split('/')[-1] + ')\''
-        elif choice == 'PHP':
-            choice = helpers.populateChoices(entrymsg, PHP_Download_Methods)
-            if choice == 'File_Get_Contents()':
-                cmd = 'php -r \'\$file = file_get_contents(\"' + args.url + '\"); file_put_contents(\"' + args.url.split('/')[-1] + '\",\$file);\''
-            elif choice == 'Fopen()':
-                cmd = 'php -r \'const BUFFER = 1024;'
-                cmd += '\$fremote = fopen (\"' + args.url + '\", \"rb\");'
-                cmd += '\$flocal = fopen(\"' + args.url.split('/')[-1] + ', \"wb\");'
-                cmd += 'while (\$buffer = fread(\$fremote, BUFFER)) \{ fwrite(\$flocal, \$buffer); \} '
-                cmd += 'fclose(\$flocal); fclose(\$remote);'
-        elif choice == 'Ruby':
-            cmd = 'ruby -e \'require \"net/http\"; File.write(\"' + args.url.split('/')[-1] + '\", Net::HTTP.get(URI.parse(\"' + args.url + '\")))\''
-        elif choice == 'Perl':
-            cmd = 'perl -e \'use LWP::Simple; getstore(\"' + args.url + '\", \"' + args.url.split('/')[-1] + '\");\''
-        elif choice == 'JavaScript':
-            cmd = 'echo \'var WinHttpReq = new ActiveXObject("WinHttp.WinHttpRequest.5.1");\' > get.js &&'
-            cmd += 'echo \'WinHttpReq.Open("GET", WScript.Arguments(0), /*async=*/false);\' >> get.js &&'
-            cmd += 'echo \'WinHttpReq.Send();\' >> get.js &&'
-            cmd += 'echo \'BinStream = new ActiveXObject("ADODB.Stream");\' >> get.js &&'
-            cmd += 'echo \'BinStream.Type = 1;\' >> get.js &&'
-            cmd += 'echo \'BinStream.Open();\' >> get.js &&'
-            cmd += 'echo \'BinStream.Write(WinHttpReq.ResponseBody);\' >> get.js &&'
-            cmd += 'echo \'BinStream.SaveToFile(WScript.Arguments(1));\' >> get.js'
-            cmd += 'node get.js ' + args.url + ' ' + args.url.split('/')[-1]
-
-        # DOWNLOAD
-        try:
-            proc = subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            proc.wait()
-            print('[+] File successfully downloaded')
-        except:
-            print('[!] File could not be downloaded')
 
 # GENERATE AND VERIFY HASH
 def verify_hash(relpath):
@@ -778,7 +688,7 @@ def main():
     elif args.module == 'uploadfrom':
         upload_from(args)
     elif args.module == 'download':
-        download_file(args)
+        dl.file(args)
     elif args.module == 'encrypt_file':
         encrypt_file(args)
     # elif args.module == 'crackpass':
