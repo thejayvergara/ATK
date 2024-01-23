@@ -1,5 +1,5 @@
 from sys import exit
-import netifaces as ni
+from netifaces import interfaces, ifaddresses, AF_INET
 
 def populateChoices(entrymsg, choiceList):
     while True:
@@ -27,10 +27,10 @@ def populateChoices(entrymsg, choiceList):
 
 def whichIP():
     ipList = []
-    for interface in ni.interfaces():
-        ipv4 = ni.ifaddresses(interface)
-        if ni.AF_INET in ipv4.keys():
-            ipList.append(ipv4[ni.AF_INET][0]['addr'])
+    for interface in interfaces():
+        ipv4 = ifaddresses(interface)
+        if AF_INET in ipv4.keys():
+            ipList.append(ipv4[AF_INET][0]['addr'])
     while True:
         print('[?] What IP address to listen on: ')
         i = 1

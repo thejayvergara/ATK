@@ -12,11 +12,9 @@ import urllib.request
 from getpass import getpass
 
 path.append('modules')
-import uploadfrom
-import uploadto
 import helpers
 import services
-import dl
+import linuxdo
 
 # UPLOAD TO WINDOW TARGET METHODS
 UploadTo_WinMethods = [
@@ -688,7 +686,7 @@ def main():
     elif args.module == 'uploadfrom':
         upload_from(args)
     elif args.module == 'download':
-        dl.file(args)
+        linuxdo.download(args.url)
     elif args.module == 'encrypt_file':
         encrypt_file(args)
     # elif args.module == 'crackpass':

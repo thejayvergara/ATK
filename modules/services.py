@@ -1,4 +1,4 @@
-from subprocess import run, Popen, DEVNULL
+from subprocess import Popen, DEVNULL
 from os import mkdir
 from sys import exit
 from time import sleep
