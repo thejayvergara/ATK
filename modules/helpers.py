@@ -58,10 +58,11 @@ def pasta(cmd):
     print('\n[================ END RUN ON TARGET ================]\n')
 
 def verifyHash(relFilePath):
+    print(f'[+] Generating MD5 checksum for {relFilePath}')
     originalMD5 = md5(open(relFilePath, 'rb').read()).hexdigest()
     while True:
         try:
-            print('[?] Paste MD5 checksum output here to compare: ', end='')
+            print('[?] Paste target MD5 checksum output here to compare: ', end='')
             remoteMD5 = input()
             if remoteMD5 == '':
                 continue
