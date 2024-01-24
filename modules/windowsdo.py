@@ -1,5 +1,5 @@
 import services
-from helpers import populateChoices, pasta, verifyHash
+from helpers import populateChoices, targetPasta, verifyHash
 from os import link, path
 from sys import exit
 from subprocess import run, PIPE, Popen, DEVNULL
@@ -91,7 +91,7 @@ def httpUploadTo(filePath):
         print('[!] Invalid choice')
     cmd = startcmd + endcmd
     link(filePath, '/tmp/webroot/' + filename)
-    pasta(cmd)
+    targetPasta(cmd)
     services.stopHTTP(proc)
 
     # if firstlaunch:
@@ -111,7 +111,7 @@ def base64UploadTo(filePath):
     # PASTABLES
     cmd = f'[IO.File]::WriteAllBytes(\"{filename}\", [Convert]::FromBase64String(\"{b64}")); '
     cmd += f'Get-FileHash {filename} -Algorithm md5'
-    pasta(cmd)
+    targetPasta(cmd)
     if len(cmd) > 8191:
         print('[!] cmd.exe has a maximum string length of 8,191 characters.')
         exit(0)
@@ -147,7 +147,7 @@ def ncUploadTo(filePath):
     targetIP = input()
     randomPort = str(randint(49152, 65535))
     cmd = 'nc.exe -l -p ' + randomPort + ' > ' + filename
-    pasta(cmd)
+    targetPasta(cmd)
     input('[?] Press any key once command is ran on target ...')
     cmd = 'nc ' + targetIP + ' ' + randomPort + ' < ' + filePath
     proc = run(cmd, shell=True, stdout=DEVNULL, stderr=DEVNULL)

@@ -52,10 +52,15 @@ def whichIP():
             print('[!] Invalid choice. Try again.')
             input('[?] Press any key to continue ...')
 
-def pasta(cmd):
+def targetPasta(cmd):
     print('\n[================== RUN ON TARGET ==================]\n')
     print(cmd)
     print('\n[================ END RUN ON TARGET ================]\n')
+
+def pwnPasta(cmd):
+    print('\n[================== RUN ON PWNBOX ==================]\n')
+    print(cmd)
+    print('\n[================ END RUN ON PWNBOX ================]\n')
 
 def verifyHash(relFilePath):
     print(f'[+] Generating MD5 checksum for {relFilePath}')

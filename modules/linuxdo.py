@@ -1,5 +1,5 @@
-from helpers import populateChoices, pasta, verifyHash
-from subprocess import run, DEVNULL, PIPE
+from helpers import populateChoices, targetPasta, pwnPasta, verifyHash
+from subprocess import run, DEVNULL, PIPE, Popen
 from os import path
 from services import startHTTP, stopHTTP
 
@@ -89,7 +89,7 @@ def base64UploadTo(filePath, method):
     elif method == 'Base64 - Fileless':
         cmd = '# EXECUTE ' + filename.upper() + ' ON TARGET\n'
         cmd += 'echo -n \'' + b64 + ' | base64 -d | bash'
-    pasta(cmd)
+    targetPasta(cmd)
 
     verifyHash(filePath)
 
@@ -129,5 +129,21 @@ def httpUploadTo(filePath, method):
     else:
         print('[!] Not yet implemented')
 
-    pasta(cmd)
+    targetPasta(cmd)
     stopHTTP(proc)
+
+def scpUploadTo(filePath):
+    # GET FILE ABSOLUTE PATH
+    filename = path.basename(path.normpath(filePath))
+
+    print('[?] Target IP: ', end='')
+    targetIP = input()
+    print('[?] Target port [default=22]: ', end='')
+    targetPort = input()
+    if targetPort == '':
+        targetPort = '22'
+    print('[?] SCP Username: ', end='')
+    username = input()
+    cmd = 'scp -P ' + targetPort + ' ' + filePath + ' ' + username + '@' + targetIP + ':/tmp'
+    pwnPasta(cmd)
+

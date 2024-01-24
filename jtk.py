@@ -140,7 +140,6 @@ def upload_to(args):
     # GENERATE RANDOM FILENAME FOR EXTREMELY MINIMAL FILE OBFUSCATION
     rand_filename = ''.join(random.choices(string.ascii_letters, k=8))
 
-    # SELECT METHOD
     entrymsg = '[?] What method to use?'
 
     if args.os == 'windows':
@@ -160,34 +159,11 @@ def upload_to(args):
         method = helpers.populateChoices(entrymsg, UploadTo_NixMethods)
 
         if method == 'Base64' or method == 'Base64 - Fileless':
-            linuxdo.base64UploadTo(args.filename, method)
-        
-        #########################
-        ### LINUX HTTP METHOD ###
-        #########################
+            linuxdo.base64UploadTo(args.filename, method)        
         elif method == 'HTTP' or method == 'HTTP - Fileless':
             linuxdo.httpUploadTo(args.filename, method)
-
-        ########################
-        ### LINUX SCP METHOD ###
-        ########################
         elif method == 'SCP':
-            print('[?] Target IP: ', end='')
-            target_ip = input()
-            print('[?] Target port [default=22]: ', end='')
-            target_port = input()
-            if target_port == '':
-                target_port = '22'
-            print('[?] SCP Username: ', end='')
-            scp_user = input()
-            scp_password = getpass(prompt='[?] SCP Password: ')
-            print('[+] Uploading ' + args.filename + ' to /tmp on ' + target_ip + ' ...')
-            cmd = 'scp -P ' + target_port + ' ' + relpath + ' ' + scp_user + '@' + target_ip + ':/tmp/' + rand_filename
-            proc = subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            if proc.returncode == 0:
-                print('[+] File uploaded as /tmp/' + rand_filename)
-            elif proc.returncode == 255:
-                print('[!] File could not be uploaded. Connection refused.')
+            linuxdo.scpUploadTo(args.filename)
 
 # UPLOAD FILES FROM
 def upload_from(args):
