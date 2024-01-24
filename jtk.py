@@ -154,25 +154,10 @@ def upload_to(args):
             windowsdo.httpUploadTo(args.filename)
         elif method == 'Base64':
             windowsdo.base64UploadTo(args.filename)
-        elif method == 'SCP':
-            windowsdo.scpUploadTo(args.filename)
-
-        #############################
-        ### WINDOWS NETCAT METHOD ###
-        #############################
+        # elif method == 'SCP':
+        #     windowsdo.scpUploadTo(args.filename)
         elif method == 'Netcat':
-            print('[?] What is the target IP: ', end='')
-            target_ip = input()
-            rand_port = str(random.randint(49152, 65535))
-            cmd = 'nc.exe -l -p ' + rand_port + ' > ' + args.filename
-            helpers.pasta(cmd)
-            input('[?] Press any key once command is ran on target ...')
-            cmd = 'nc ' + target_ip + ' ' + rand_port + ' < ' + relpath
-            proc = subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            if proc.returncode == 0:
-                print('[+] File successfully uploaded.')
-            else:
-                print('[!] File could not be uploaded. Connection refused.')
+            windowsdo.ncUploadTo(args.filename)
 
     #######################
     ### TO LINUX TARGET ###

@@ -2,7 +2,8 @@ import services
 from helpers import populateChoices, pasta, verifyHash
 from os import link, path
 from sys import exit
-from subprocess import run, PIPE, Popen
+from subprocess import run, PIPE, Popen, DEVNULL
+from random import randint
 
 # POWERSHELL UPLOAD TO, METHODS
 PSTo_Methods = [
@@ -117,23 +118,40 @@ def base64UploadTo(filePath):
 
     verifyHash(filePath)
 
-def scpUploadTo(filePath):
+# def scpUploadTo(filePath):
+#     # GET FILE ABSOLUTE PATH
+#     filename = path.basename(path.normpath(filePath))
+
+#     print('[?] Target IP: ', end='')
+#     targetIP = input()
+#     print('[?] Target port [default=22]: ', end='')
+#     targetPort = input()
+#     if targetPort == '':
+#         targetPort = '22'
+#     print('[?] SCP Username: ', end='')
+#     scp_user = input()
+#     scp_password = getpass(prompt='[?] SCP Password: ')
+#     print(f'[+] Uploading {filename} to {targetIP} ...')
+#     cmd = 'scp -P ' + targetPort + ' ' + filePath + ' ' + userame + '@' + targetIP + ':/tmp/' + filename
+#     proc = subprocess.run(cmd)
+#     if proc.returncode == 0:
+#         print('[+] File uploaded as /tmp/' + filename)
+#     elif proc.returncode == 255:
+#         print('[!] File could not be uploaded. Connection refused.')
+
+def ncUploadTo(filePath):
     # GET FILE ABSOLUTE PATH
     filename = path.basename(path.normpath(filePath))
 
-    print('[?] Target IP: ', end='')
+    print('[?] What is the target IP: ', end='')
     targetIP = input()
-    print('[?] Target port [default=22]: ', end='')
-    targetPort = input()
-    if targetPort == '':
-        targetPort = '22'
-    print('[?] SCP Username: ', end='')
-    scp_user = input()
-    scp_password = getpass(prompt='[?] SCP Password: ')
-    print(f'[+] Uploading {filename} to {targetIP} ...')
-    cmd = 'scp -P ' + targetPort + ' ' + filePath + ' ' + userame + '@' + targetIP + ':/tmp/' + filename
-    proc = subprocess.run(cmd)
+    randomPort = str(randint(49152, 65535))
+    cmd = 'nc.exe -l -p ' + randomPort + ' > ' + filename
+    pasta(cmd)
+    input('[?] Press any key once command is ran on target ...')
+    cmd = 'nc ' + targetIP + ' ' + randomPort + ' < ' + filePath
+    proc = run(cmd, shell=True, stdout=DEVNULL, stderr=DEVNULL)
     if proc.returncode == 0:
-        print('[+] File uploaded as /tmp/' + filename)
-    elif proc.returncode == 255:
+        print('[+] File successfully uploaded.')
+    else:
         print('[!] File could not be uploaded. Connection refused.')
