@@ -59,12 +59,17 @@ def pasta(cmd):
 
 def verifyHash(relFilePath):
     originalMD5 = md5(open(relFilePath, 'rb').read()).hexdigest()
-    try:
-        print('[?] Paste MD5 checksum output here to compare: ', end='')
-        remoteMD5 = input()
-        if originalMD5 == remoteMD5:
-            print('[+] MD5 checksum matches! You\'re good to go.')
-        else:
-            print('[-] Uh-oh... MD5 checksum doesn\'t match. Try again.')
-    except KeyboardInterrupt:
-        exit(0)
+    while True:
+        try:
+            print('[?] Paste MD5 checksum output here to compare: ', end='')
+            remoteMD5 = input()
+            if remoteMD5 == '':
+                continue
+            elif originalMD5 == remoteMD5:
+                print('[+] MD5 checksum matches. You\'re good to go!')
+                break
+            else:
+                print('[-] Uh-oh.. MD5 checksum doesn\'t match. Try file transfer again.')
+                break
+        except KeyboardInterrupt:
+            exit(0)
