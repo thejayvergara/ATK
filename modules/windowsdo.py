@@ -116,3 +116,24 @@ def base64UploadTo(filePath):
         exit(0)
 
     verifyHash(filePath)
+
+def scpUploadTo(filePath):
+    # GET FILE ABSOLUTE PATH
+    filename = path.basename(path.normpath(filePath))
+
+    print('[?] Target IP: ', end='')
+    targetIP = input()
+    print('[?] Target port [default=22]: ', end='')
+    targetPort = input()
+    if targetPort == '':
+        targetPort = '22'
+    print('[?] SCP Username: ', end='')
+    scp_user = input()
+    scp_password = getpass(prompt='[?] SCP Password: ')
+    print(f'[+] Uploading {filename} to {targetIP} ...')
+    cmd = 'scp -P ' + targetPort + ' ' + filePath + ' ' + userame + '@' + targetIP + ':/tmp/' + filename
+    proc = subprocess.run(cmd)
+    if proc.returncode == 0:
+        print('[+] File uploaded as /tmp/' + filename)
+    elif proc.returncode == 255:
+        print('[!] File could not be uploaded. Connection refused.')
