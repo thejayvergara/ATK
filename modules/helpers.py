@@ -1,5 +1,6 @@
 from sys import exit
 from netifaces import interfaces, ifaddresses, AF_INET
+from hashlib import md5
 
 def populateChoices(entrymsg, choiceList):
     while True:
@@ -55,3 +56,15 @@ def pasta(cmd):
     print('\n[================== RUN ON TARGET ==================]\n')
     print(cmd)
     print('\n[================ END RUN ON TARGET ================]\n')
+
+def verifyHash(relFilePath):
+    originalMD5 = md5(open(relFilePath, 'rb').read()).hexdigest()
+    try:
+        print('[?] Paste MD5 checksum output here to compare: ', end='')
+        remoteMD5 = input()
+        if originalMD5 == remoteMD5:
+            print('[+] MD5 checksum matches! You\'re good to go.')
+        else:
+            print('[-] Uh-oh... MD5 checksum doesn\'t match. Try again.')
+    except KeyboardInterrupt:
+        exit(0)

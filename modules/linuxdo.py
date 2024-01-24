@@ -1,4 +1,4 @@
-import helpers
+from helpers import populateChoices
 from subprocess import run, DEVNULL
 
 Download_Methods = [
@@ -18,7 +18,7 @@ def upload():
 def download(url):
     # SELECT DOWNLOAD METHOD
     entrymsg = '[?] Which download method to use:'
-    choice = helpers.populateChoices(entrymsg, Download_Methods)
+    choice = populateChoices(entrymsg, Download_Methods)
     if choice == 'Python 3':
         try:
             urllib.request.urlretrieve(url, url.split('/')[-1])
@@ -33,7 +33,7 @@ def download(url):
         elif choice == 'Python 2.7':
             cmd = 'python2.7 -c \'import urllib;urllib.urlretrieve (' + url + ', ' + url.split('/')[-1] + ')\''
         elif choice == 'PHP':
-            choice = helpers.populateChoices(entrymsg, PHP_Download_Methods)
+            choice = populateChoices(entrymsg, PHP_Download_Methods)
             if choice == 'File_Get_Contents()':
                 cmd = 'php -r \'\$file = file_get_contents(\"' + url + '\"); file_put_contents(\"' + url.split('/')[-1] + '\",\$file);\''
             elif choice == 'Fopen()':
