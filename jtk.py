@@ -143,9 +143,6 @@ def upload_to(args):
     # SELECT METHOD
     entrymsg = '[?] What method to use?'
 
-    #########################
-    ### TO WINDOWS TARGET ###
-    #########################
     if args.os == 'windows':
         # METHOD SELECTION
         method = helpers.populateChoices(entrymsg, UploadTo_WinMethods)
@@ -158,39 +155,12 @@ def upload_to(args):
         #     windowsdo.scpUploadTo(args.filename)
         elif method == 'Netcat':
             windowsdo.ncUploadTo(args.filename)
-
-    #######################
-    ### TO LINUX TARGET ###
-    #######################
     elif args.os == 'linux':
         # METHOD SELECTION
         method = helpers.populateChoices(entrymsg, UploadTo_NixMethods)
 
-        ###########################
-        ### LINUX BASE64 METHOD ###
-        ###########################
         if method == 'Base64' or method == 'Base64 - Fileless':
-            # GENERATE BASE64 STRING
-            print('[+] Generating Base64 string of file')
-            cmd = 'cat ' + relpath + ' | base64 -w 0'
-            try:
-                proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
-                b64 = proc.stdout.decode()
-            except KeyboardInterrupt:
-                print('[!] File not found')
-
-            # PASTABLES
-            if method == 'Base64':
-                cmd = '# CREATE ' + args.filename.upper() + ' ON TARGET\n'
-                cmd += 'echo -n \'' + b64 + '\' | base64 -d > ' + args.filename + '\n'
-                cmd += '\n# GENERATE MD5 CHECKSUM FOR TRANSFERRED FILE\n'
-                cmd += 'md5sum ' + args.filename
-            elif method == 'Base64 - Fileless':
-                cmd = '# EXECUTE ' + args.filename.upper() + ' ON TARGET\n'
-                cmd += 'echo -n \'' + b64 + ' | base64 -d | bash'
-            helpers.pasta(cmd)
-
-            verify_hash(relpath)
+            linuxdo.base64UploadTo(args.filename, method)
         
         #########################
         ### LINUX HTTP METHOD ###

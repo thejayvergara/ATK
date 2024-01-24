@@ -1,5 +1,6 @@
-from helpers import populateChoices
-from subprocess import run, DEVNULL
+from helpers import populateChoices, pasta, verifyHash
+from subprocess import run, DEVNULL, PIPE
+from os import path
 
 Download_Methods = [
     'wget',
@@ -11,9 +12,6 @@ Download_Methods = [
     'Perl',
     'JavaScript'
 ]
-
-def upload():
-    print()
 
 def download(url):
     # SELECT DOWNLOAD METHOD
@@ -67,3 +65,29 @@ def download(url):
                 print('[!] Check the link and try again')
             else:
                 print(proc.returncode)
+
+def base64UploadTo(filePath, method):
+    # GET FILE ABSOLUTE PATH
+    filename = path.basename(path.normpath(filePath))
+
+    # GENERATE BASE64 STRING
+    print('[+] Generating Base64 string of file ...')
+    cmd = f'cat {filePath} | base64 -w 0'
+    try:
+        proc = run(cmd, shell=True, stdout=PIPE, text=True)
+        b64 = proc.stdout
+    except KeyboardInterrupt:
+        print('[!] File doesn\'t exist')
+
+    # PASTABLES
+    if method == 'Base64':
+        cmd = '# CREATE ' + filename.upper() + ' ON TARGET\n'
+        cmd += 'echo -n \'' + b64 + '\' | base64 -d > ' + filename + '\n'
+        cmd += '\n# GENERATE MD5 CHECKSUM FOR TRANSFERRED FILE\n'
+        cmd += 'md5sum ' + filename
+    elif method == 'Base64 - Fileless':
+        cmd = '# EXECUTE ' + filename.upper() + ' ON TARGET\n'
+        cmd += 'echo -n \'' + b64 + ' | base64 -d | bash'
+    pasta(cmd)
+
+    verifyHash(filePath)
