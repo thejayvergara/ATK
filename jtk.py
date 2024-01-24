@@ -20,7 +20,7 @@ import windowsdo
 # UPLOAD TO WINDOW TARGET METHODS
 UploadTo_WinMethods = [
     'HTTP',
-    'SCP',
+    # 'SCP',
     'Base64',
     'Netcat',
     # 'SMB',
@@ -57,12 +57,7 @@ UploadFrom_NixMethods = [
     # 'WebDAV',
 ]
 
-PHP_Download_Methods = [
-    'File_Get_Contents()',
-    'Fopen()',
-]
-
-Fileless_Types = [
+Linux_Fileless_Types = [
     'BASH (.sh)',
     'Python (.py)'
 ]
@@ -137,9 +132,6 @@ def create_payload(args):
 
 # UPLOAD FILES TO
 def upload_to(args):
-    # GENERATE RANDOM FILENAME FOR EXTREMELY MINIMAL FILE OBFUSCATION
-    rand_filename = ''.join(random.choices(string.ascii_letters, k=8))
-
     entrymsg = '[?] What method to use?'
 
     if args.os == 'windows':

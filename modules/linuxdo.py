@@ -14,6 +14,11 @@ Download_Methods = [
     'JavaScript'
 ]
 
+PHP_Download_Methods = [
+    'File_Get_Contents()',
+    'Fopen()',
+]
+
 def download(url):
     # SELECT DOWNLOAD METHOD
     entrymsg = '[?] Which download method to use:'
