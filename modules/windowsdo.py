@@ -27,7 +27,7 @@ def httpUploadTo(filePath):
     choice = populateChoices(entrymsg, PSTo_Methods)
     if choice == 'DownloadFile':
         print('[+] DownloadFile method selected')
-        print('[?] Sync or Async [default=sync]: ', end='')
+        print('[?] Sync or Async [default=Sync]: ', end='')
         try:
             sync = input().lower()
         except KeyboardInterrupt:
@@ -99,12 +99,15 @@ def httpUploadTo(filePath):
     #     print('[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}')
 
 def base64UploadTo(filePath):
+    # GET FILE ABSOLUTE PATH
     filename = path.basename(path.normpath(filePath))
 
     print('[+] Generating Base64 string of file ...')
     cmd = f'cat {filePath} | base64 -w 0'
     proc = run(cmd, shell=True, stdout=PIPE, text=True)
     b64 = proc.stdout
+
+    # PASTABLES
     cmd = f'[IO.File]::WriteAllBytes(\"{filename}\", [Convert]::FromBase64String(\"{b64}")); '
     cmd += f'Get-FileHash {filename} -Algorithm md5'
     pasta(cmd)
