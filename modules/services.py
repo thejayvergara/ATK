@@ -1,4 +1,4 @@
-from subprocess import Popen, DEVNULL
+from subprocess import Popen, DEVNULL, run
 from os import mkdir
 from sys import exit
 from time import sleep
@@ -71,7 +71,7 @@ def stopHTTP(proc):
         print('[!] Temporary webroot could not be deleted (/tmp/webroot)')
 
 def startListener(listenIP, listenPort):
-    cmd = f'nc -nls {listenIP} -p {listenPort}'
+    cmd = 'nc -nls ' + listenIP + ' -p ' + listenPort
     print(f'[+] Listening on {listenIP}:{listenPort} ...')
     try:
         run(cmd.split())
