@@ -152,33 +152,10 @@ def upload_to(args):
 
         if method == 'HTTP':
             windowsdo.httpUploadTo(args.filename)
-
-        #############################    
-        ### WINDOWS BASE64 METHOD ###
-        #############################
         elif method == 'Base64':
             windowsdo.base64UploadTo(args.filename)
-
-        ##########################
-        ### WINDOWS SCP METHOD ###
-        ##########################
         elif method == 'SCP':
-            print('[?] Target IP: ', end='')
-            target_ip = input()
-            print('[?] Target port [default=22]: ', end='')
-            target_port = input()
-            if target_port == '':
-                target_port = '22'
-            print('[?] SCP Username: ', end='')
-            scp_user = input()
-            scp_password = getpass(prompt='[?] SCP Password: ')
-            print('[+] Uploading ' + args.filename + ' to /tmp on ' + target_ip + ' ...')
-            scp_connect = scp_user + '@' + target_ip + ':/tmp/' + rand_filename
-            res = subprocess.run(['scp', '-P', target_port, args.filename, scp_connect], capture_output=True, text=True)
-            if res.returncode == 0:
-                print('[+] File uploaded as /tmp/' + rand_filename)
-            elif res.returncode == 255:
-                print('[!] File could not be uploaded. Connection refused.')
+            windowsdo.scpUploadTo(args.filename)
 
         #############################
         ### WINDOWS NETCAT METHOD ###
